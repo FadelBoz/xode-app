@@ -38,7 +38,9 @@ export const color = {
         destructive: "#EF4444",          // 0 84% 60%
         destructiveForeground: "#F1F5F9",// 210 40% 98%
       
-        border: "#E2E8F0",               // 214 32% 91%
+        border: "#E2E8F0", 
+        borderGreen: "#3998be",                // 240 4% 20%
+                      // 214 32% 91%
         input: "#E2E8F0", 
         submit: "#291754",                  // 240 4% 20%               // 214 32% 91%
         ring: "#64748B",                 // 220 14% 40%
@@ -88,7 +90,8 @@ export const color = {
         
         destructive: "#B91C1C",            // 0 62% 41%
         destructiveForeground: "#8a2217",  // 220 14% 96%
-        border: "#32284b",                 // 240 4% 20%
+        border: "#32284b", 
+        borderGreen: "#3998be",                // 240 4% 20%
         input: "#32284b", 
         submit: "#291754",               // 240 4% 20%
         ring: "#A1A1AA" ,                // 240 5% 65%

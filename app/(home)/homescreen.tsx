@@ -119,7 +119,9 @@ const HomeScreen = () => {
       width: 36,
       height: 36,
       borderRadius: 8,
-      backgroundColor: '#FFFFFF',
+      // borderColor: col.borderGreen, 
+      // borderWidth:0.5,
+      backgroundColor: col.card2,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 16,
@@ -211,8 +213,9 @@ const HomeScreen = () => {
           <TouchableOpacity style={styles.recentItem}>
             <CardComponent style={styles.appIconContainer}>
               <Image 
-                source={{ uri: 'https://cdn.jsdelivr.net/gh/expo/expo-cli@master/assets/fig/icon.png' }} 
+                source={require('@/assets/images/react-logo.png')} 
                 style={styles.appIcon} 
+                // blurRadius={10}
               />
             </CardComponent>
             <TextComponent>xode-app</TextComponent>
