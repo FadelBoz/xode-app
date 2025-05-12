@@ -7,6 +7,7 @@ import { TextComponent } from '@/components/text/TextComponent';
 import { BlurView } from 'expo-blur';
 import { ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { API_ENDPOINTS, API_URL } from '@/configs/global';
 
 
 const EmailScreen = () => {
@@ -16,10 +17,10 @@ const EmailScreen = () => {
   const [isValidEmail, setIsValidEmail] = useState(true);
   const [isSendingEmail , setSendingEmail] = useState(false);
   const [isError, setError] = useState(false);
+  const [ error , setIsError]= useState('Veuillez saisir un email correct');
 
   const animatedBorder = useRef(new Animated.Value(0)).current;
   const shake = useRef(new Animated.Value(0)).current;
-
   const handleFocus = () => {
     setIsFocused(true);
 
@@ -53,24 +54,42 @@ const EmailScreen = () => {
     return regex.test(email.toLowerCase());
   };
 
-  const handlePress = () => {
+  const handlePress = async () => {
     const isValid = validateEmail(email);
     setIsValidEmail(isValid);
     if (!isValid) {
       handleFocus(); // shake input
       setError(true);
-    } else {
-        setError(false);
-        Keyboard.dismiss();
-        const timer = setTimeout(()=>{
-            setSendingEmail(true);
-        });
-        ()=>clearTimeout(timer);
-        // Envoyer email ou passer à l'étape suivante
-        router.replace('/PinCodeScreen');
-        return ;
+      return;
+    }
+  
+    setError(false);
+    setSendingEmail(true);
+    Keyboard.dismiss();
+  
+    try {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.verifyUser}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok && data.success) {
+        router.replace('/PinCodeScreen'); // Succès : on passe à l'étape suivante
+      } else {
+        setError(true); // Échec : afficher un message
+      }
+    } catch (err) {
+      setError(true);
+    } finally {
+      setSendingEmail(false);
     }
   };
+  
 
   const borderColor = animatedBorder.interpolate({
     inputRange: [0, 1],
@@ -134,7 +153,7 @@ const EmailScreen = () => {
               </TextComponent>
             </CardComponent>):(
                 <CardComponent>
-                    <TextComponent variante='body4' color={col.destructive}>Veuillez saisir un email correct</TextComponent>
+                    <TextComponent variante='body4' color={col.destructive}>{error}</TextComponent>
                 </CardComponent>
             )}
             <CardComponent style={styles.form}>
