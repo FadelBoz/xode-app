@@ -6,16 +6,20 @@ const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 export const color = {
     light:{
-        background: "#F1F5F9",           // 210 40% 98%
-        foreground: "#0F172A",           // 222 47% 11%
+        background: "rgba(255, 255, 255, 0.7)",           // 210 40% 98%
+        foreground: "rgba(0,0,0,0.5)",           // 222 47% 11%
       
-        card: "#FFFFFF",                 // 0 0% 100%
-        cardForeground: "#0F172A",       // 222 47% 11%
+        card: "#FFFFFF",   
+        card2:"#1b142e",               // 240 6% 14%
+        cardForeground: "#0F172A",  
+        validated: '#20b426',      // 220 14% 96%// 222 47% 11%
       
         popover: "#FFFFFF",              // 0 0% 100%
         popoverForeground: "#0F172A",    // 222 47% 11%
       
-        primary: "#334155",              // 220.2 21.5% 22.5% (tu as une petite erreur sur ton css, je corrige ici)
+        primary: "#334155",     
+        primary2:"#0ab9d5",            // 240 5% 65%
+                 // 220.2 21.5% 22.5% (tu as une petite erreur sur ton css, je corrige ici)
         primaryForeground: "#F1F5F9",    // 210 40% 98%
       
         secondary: "#F8FAFC",            // 210 40% 96%
@@ -31,7 +35,8 @@ export const color = {
         destructiveForeground: "#F1F5F9",// 210 40% 98%
       
         border: "#E2E8F0",               // 214 32% 91%
-        input: "#E2E8F0",                // 214 32% 91%
+        input: "#E2E8F0", 
+        submit: "#291754",                  // 240 4% 20%               // 214 32% 91%
         ring: "#64748B",                 // 220 14% 40%
       
         radius: 12,                      // 0.75rem en pixels (0.75*16)
@@ -51,16 +56,19 @@ export const color = {
         pink: "#FF69EB"
     },
     dark:{
-        background: "#1A1A1A",            // 240 5% 10%
-        foreground: "#E2E8F0",            // 220 14% 96%
+        background: "#080513",            // 240 5% 10%
+        foreground: "#060213",            // 220 14% 96%
         
-        card: "#232323",                  // 240 6% 14%
-        cardForeground: "#E2E8F0",         // 220 14% 96%
+        card: "#130e22",   
+        card2:"#1b142e",               // 240 6% 14%
+        cardForeground: "#0d0a18", 
+        validated: '#20b426',      // 220 14% 96%
         
         popover: "#232323",                // 240 6% 14%
         popoverForeground: "#E2E8F0",      // 220 14% 96%
         
-        primary: "#A1A1AA",                // 240 5% 65%
+        primary: "#4b15f1",    
+        primary2:"#390ebf",            // 240 5% 65%
         primaryForeground: "#1A1A1A",      // 240 5% 10%
         
         secondary: "#333333",              // 240 4% 20%
@@ -73,10 +81,10 @@ export const color = {
         accentForeground: "#E2E8F0",       // 220 14% 96%
         
         destructive: "#B91C1C",            // 0 62% 41%
-        destructiveForeground: "#E2E8F0",  // 220 14% 96%
-        
-        border: "#2A2D31",                 // 240 4% 20%
-        input: "#333333",                  // 240 4% 20%
+        destructiveForeground: "#8a2217",  // 220 14% 96%
+        border: "#32284b",                 // 240 4% 20%
+        input: "#32284b", 
+        submit: "#291754",               // 240 4% 20%
         ring: "#A1A1AA" ,                // 240 5% 65%
 
         text: '#ECEDEE',

@@ -6,6 +6,7 @@ import { CardComponent } from '@/components/ui/CardComponent';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { TextComponent } from '@/components/text/TextComponent';
 import ScannerIcon from '@/components/ui/ScannerIcon';
+import EmojiIcon from '@/components/ui/EmojiIcon';
 
 const HomeScreen = () => {
   const [isUrlInputVisible, setIsUrlInputVisible] = useState(false);
@@ -14,7 +15,7 @@ const HomeScreen = () => {
 
   const styles = StyleSheet.create({
     appBar: {
-      backgroundColor: col.background,
+      backgroundColor: col.card,
       padding: 16,
       borderBottomWidth: 1,
       borderBottomColor: col.border,
@@ -65,6 +66,7 @@ const HomeScreen = () => {
       padding: 16,
       borderBottomWidth: 1,
       borderBottomColor: col.border,
+      backgroundColor: col.card
     },
     urlInput: {
       backgroundColor: col.border,
@@ -74,7 +76,7 @@ const HomeScreen = () => {
       marginBottom: 16,
     },
     connectButton: {
-      backgroundColor: col.card,
+      backgroundColor: col.submit,
       padding: 14,
       borderRadius: 6,
       alignItems: 'center',
@@ -87,6 +89,7 @@ const HomeScreen = () => {
     },
     qrIconContainer: {
       marginRight: 8,
+      backgroundColor:col.card
     },
     qrIcon: {
       color: '#FFFFFF',
@@ -132,89 +135,91 @@ const HomeScreen = () => {
   });
 
   return ( 
-    <SafeAreaView style = {{backgroundColor: col.background , flex: 1}}>
+    <SafeAreaView style = {{backgroundColor: col.card , flex: 1}}>
       {/* App Bar */}
       <CardComponent style={styles.appBar}>
-          <TextComponent variante='subtitle1'>XD</TextComponent>
+          <TextComponent variante='subtitle1' color={col.icon}>XD</TextComponent>
+      </CardComponent>
+      <CardComponent style={{backgroundColor: col.background, flex:1}}>
+        
+        {/* Development Servers Section */}
+        <CardComponent style={styles.section}>
+          <CardComponent style={styles.sectionHeader}>
+            <CardComponent style={styles.serverIcon}>
+              <TextComponent>$~</TextComponent>
+            </CardComponent>
+            <CardComponent style={styles.sectionTitle}>
+              <TextComponent >Hy ! Wistoria.dev </TextComponent>
+            </CardComponent>
+            <TouchableOpacity>
+              <TextComponent  color={col.orange} >HELP</TextComponent>
+            </TouchableOpacity>
+          </CardComponent>
+          
+          {/* Sign In Card */}
+          <CardComponent style={styles.signInCard}>
+            <TouchableOpacity style={styles.signInPrompt}>
+              <TextComponent>
+                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Placeat laboriosam sint 
+                unde porro eveniet voluptatem rerum veritatis reprehenderit consequatur suscipit architecto
+                ea saepe tenetur atque ullam deleniti repellendus, non magnam!
+              </TextComponent>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.urlOption}
+              onPress={() => setIsUrlInputVisible(!isUrlInputVisible)}
+            >
+              <TextComponent >
+                {isUrlInputVisible ? '▼' : '▶'} Enter URL manually
+              </TextComponent>
+            </TouchableOpacity>
+            
+            {isUrlInputVisible && (
+              <CardComponent style={styles.urlInputContainer}>
+                <TextInput
+                  style={styles.urlInput}
+                  placeholder="https://"
+                  placeholderTextColor= {col.ring}
+                />
+                <TouchableOpacity style={styles.connectButton}>
+                  <TextComponent>Connect</TextComponent>
+                </TouchableOpacity>
+              </CardComponent>
+            )}
+            <TouchableOpacity 
+              style={styles.qrOption}
+              onPress={() => router.push('/scanscreen')} // Modifiez cette ligne
+            >
+              <CardComponent style={styles.qrIconContainer}>
+                <ScannerIcon/>
+              </CardComponent>
+              <TextComponent >Scan QR code</TextComponent>
+            </TouchableOpacity>
+          </CardComponent>
+        </CardComponent>
+        
+        {/* Recently Opened Section */}
+        <CardComponent style={styles.recentSection}>
+          <CardComponent style={styles.recentHeader}>
+            <TextComponent >Recently opened</TextComponent>
+            <TouchableOpacity>
+              <TextComponent variante='body4' color={col.destructive}>CLEAR</TextComponent>
+            </TouchableOpacity>
+          </CardComponent>
+          
+          <TouchableOpacity style={styles.recentItem}>
+            <CardComponent style={styles.appIconContainer}>
+              <Image 
+                source={{ uri: 'https://cdn.jsdelivr.net/gh/expo/expo-cli@master/assets/fig/icon.png' }} 
+                style={styles.appIcon} 
+              />
+            </CardComponent>
+            <TextComponent>xode-app</TextComponent>
+          </TouchableOpacity>
+        </CardComponent>
       </CardComponent>
 
-      {/* Development Servers Section */}
-      <CardComponent style={styles.section}>
-        <CardComponent style={styles.sectionHeader}>
-          <CardComponent style={styles.serverIcon}>
-            <TextComponent>$~</TextComponent>
-          </CardComponent>
-          <CardComponent style={styles.sectionTitle}>
-            <TextComponent >Development</TextComponent>
-          </CardComponent>
-          <TouchableOpacity>
-            <TextComponent >HELP</TextComponent>
-          </TouchableOpacity>
-        </CardComponent>
-        
-        {/* Sign In Card */}
-        <CardComponent style={styles.signInCard}>
-          <TouchableOpacity style={styles.signInPrompt}>
-            <TextComponent>
-              Lorem ipsum dolor, sit amet consectetur adipisicing elit. Placeat laboriosam sint 
-              unde porro eveniet voluptatem rerum veritatis reprehenderit consequatur suscipit architecto
-               ea saepe tenetur atque ullam deleniti repellendus, non magnam!
-            </TextComponent>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.urlOption}
-            onPress={() => setIsUrlInputVisible(!isUrlInputVisible)}
-          >
-            <TextComponent >
-              {isUrlInputVisible ? '▼' : '▶'} Enter URL manually
-            </TextComponent>
-          </TouchableOpacity>
-          
-          {isUrlInputVisible && (
-            <CardComponent style={styles.urlInputContainer}>
-              <TextInput
-                style={styles.urlInput}
-                placeholder="exp://"
-                placeholderTextColor="#8D8D8D"
-                defaultValue="exp://"
-              />
-              <TouchableOpacity style={styles.connectButton}>
-                <TextComponent>Connect</TextComponent>
-              </TouchableOpacity>
-            </CardComponent>
-          )}
-          <TouchableOpacity 
-            style={styles.qrOption}
-            onPress={() => router.push('/scanscreen')} // Modifiez cette ligne
-          >
-            <CardComponent style={styles.qrIconContainer}>
-              <ScannerIcon/>
-            </CardComponent>
-            <TextComponent>Scan QR code</TextComponent>
-          </TouchableOpacity>
-        </CardComponent>
-      </CardComponent>
-      
-      {/* Recently Opened Section */}
-      <CardComponent style={styles.recentSection}>
-        <CardComponent style={styles.recentHeader}>
-          <TextComponent >Recently opened</TextComponent>
-          <TouchableOpacity>
-            <TextComponent variante='body4' color={col.text2}>CLEAR</TextComponent>
-          </TouchableOpacity>
-        </CardComponent>
-        
-        <TouchableOpacity style={styles.recentItem}>
-          <CardComponent style={styles.appIconContainer}>
-            <Image 
-              source={{ uri: 'https://cdn.jsdelivr.net/gh/expo/expo-cli@master/assets/fig/icon.png' }} 
-              style={styles.appIcon} 
-            />
-          </CardComponent>
-          <TextComponent>xode-app</TextComponent>
-        </TouchableOpacity>
-      </CardComponent>
     </SafeAreaView>
   );
 };
