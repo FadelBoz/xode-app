@@ -6,6 +6,7 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { TextComponent } from '@/components/text/TextComponent';
 import { BlurView } from 'expo-blur';
 import { ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 
 
 const EmailScreen = () => {
@@ -60,15 +61,20 @@ const EmailScreen = () => {
       setError(true);
     } else {
         setError(false);
-        setSendingEmail(true)
         Keyboard.dismiss();
+        const timer = setTimeout(()=>{
+            setSendingEmail(true);
+        });
+        ()=>clearTimeout(timer);
         // Envoyer email ou passer à l'étape suivante
+        router.replace('/PinCodeScreen');
+        return ;
     }
   };
 
   const borderColor = animatedBorder.interpolate({
     inputRange: [0, 1],
-    outputRange: [col.border, isValidEmail ? col.primary2 :  col.destructive],
+    outputRange: [col.border, isValidEmail ? col.primary3 :  col.destructive],
   });
 
   const styles = StyleSheet.create({
@@ -94,7 +100,7 @@ const EmailScreen = () => {
       color: col.text,
       padding: 15,
       minWidth: '88%',
-      borderRadius: 5,
+      borderRadius: 10,
     },
     connectButton: {
       backgroundColor: col.submit,
@@ -166,20 +172,20 @@ const EmailScreen = () => {
           </CardComponent>
         </CardComponent>
         {isSendingEmail && (
-        <BlurView
-            intensity={10}
-            tint="default"
-            style={{
-            ...StyleSheet.absoluteFillObject,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            zIndex: 99, // au-dessus
-            }}
-        >
-        <ActivityIndicator size="large" color={col.primary} />
+            <BlurView
+                intensity={10}
+                tint="default"
+                style={{
+                ...StyleSheet.absoluteFillObject,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                zIndex: 99, // au-dessus
+                }}
+            >
+            <ActivityIndicator size="large" color={col.primary} />
 
-        </BlurView>
+            </BlurView>
         )}
       </SafeAreaView>
     </TouchableWithoutFeedback>

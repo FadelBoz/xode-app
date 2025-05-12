@@ -7,7 +7,9 @@ const tintColorDark = '#fff';
 export const color = {
     light:{
         background: "rgba(255, 255, 255, 0.7)",           // 210 40% 98%
-        foreground: "rgba(0,0,0,0.5)",           // 222 47% 11%
+        foreground: "rgba(0,0,0,0.5)",  
+        background2: "rgba(255, 255, 255, 0.7)",           // 240 5% 10%
+                 // 222 47% 11%
       
         card: "#FFFFFF",   
         card2:"#1b142e",               // 240 6% 14%
@@ -18,7 +20,9 @@ export const color = {
         popoverForeground: "#0F172A",    // 222 47% 11%
       
         primary: "#334155",     
-        primary2:"#0ab9d5",            // 240 5% 65%
+        primary2:"#0ab9d5", 
+        primary3: "#31197b",           // 240 5% 65%
+                   // 240 5% 65%
                  // 220.2 21.5% 22.5% (tu as une petite erreur sur ton css, je corrige ici)
         primaryForeground: "#F1F5F9",    // 210 40% 98%
       
@@ -56,7 +60,8 @@ export const color = {
         pink: "#FF69EB"
     },
     dark:{
-        background: "#080513",            // 240 5% 10%
+        background: "#080513",  
+        background2: "#1e1d23",           // 240 5% 10%
         foreground: "#060213",            // 220 14% 96%
         
         card: "#130e22",   
@@ -68,7 +73,8 @@ export const color = {
         popoverForeground: "#E2E8F0",      // 220 14% 96%
         
         primary: "#4b15f1",    
-        primary2:"#390ebf",            // 240 5% 65%
+        primary2:"#390ebf",  
+        primary3: "#5035a1",           // 240 5% 65%
         primaryForeground: "#1A1A1A",      // 240 5% 10%
         
         secondary: "#333333",              // 240 4% 20%
