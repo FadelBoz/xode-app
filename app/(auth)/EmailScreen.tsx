@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Keyboard, StyleSheet, TouchableOpacity, TextInput, Animated, Easing, TouchableWithoutFeedback } from 'react-native';
+import { View, Keyboard, StyleSheet, TouchableOpacity, TextInput, Animated, Easing, TouchableWithoutFeedback, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CardComponent } from '@/components/ui/CardComponent';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -8,6 +8,7 @@ import { BlurView } from 'expo-blur';
 import { ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { API_ENDPOINTS, API_URL } from '@/configs/global';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 const EmailScreen = () => {
@@ -18,6 +19,7 @@ const EmailScreen = () => {
   const [isSendingEmail , setSendingEmail] = useState(false);
   const [isError, setError] = useState(false);
   const [ error , setIsError]= useState('Veuillez saisir un email correct');
+  const { setEmail: setUserEmail } = useAuth();
 
   const animatedBorder = useRef(new Animated.Value(0)).current;
   const shake = useRef(new Animated.Value(0)).current;
@@ -79,6 +81,7 @@ const EmailScreen = () => {
       const data = await response.json();
   
       if (response.ok && data.success) {
+        setUserEmail(email);
         router.replace('/PinCodeScreen'); // Succès : on passe à l'étape suivante
       } else {
         setError(true); // Échec : afficher un message
@@ -90,7 +93,6 @@ const EmailScreen = () => {
     }
   };
   
-
   const borderColor = animatedBorder.interpolate({
     inputRange: [0, 1],
     outputRange: [col.border, isValidEmail ? col.primary3 :  col.destructive],
@@ -138,7 +140,10 @@ const EmailScreen = () => {
         alignItems: 'center',
         zIndex: 10, // assure la priorité visuelle
       },
-      
+    images :{
+      maxHeight:'50%',
+      width:'100%'
+    }
   });
 
   return (
@@ -146,10 +151,16 @@ const EmailScreen = () => {
       <SafeAreaView style={{ backgroundColor: col.background, flex: 1 }}>
         <CardComponent style={styles.container}>
           <CardComponent style={styles.formParent}>
-            <TextComponent variante="subtitle0">Vérifiez votre Email</TextComponent>
+            <Image 
+              source={require('@/assets/images/video-calling.png')}
+              resizeMode='contain'
+              style = {styles.images}
+
+            />
+            <TextComponent variante="subtitle0">Connectez-vous</TextComponent>
             { !isError ? ( <CardComponent style={{ maxWidth: '85%' }}>
               <TextComponent color={col.ring}>
-                Veuillez remplir votre email de connexion. Un code de vérification à 5 chiffres vous sera envoyé pour confirmer votre identité.
+                Veuillez remplir votre email de connexion.
               </TextComponent>
             </CardComponent>):(
                 <CardComponent>

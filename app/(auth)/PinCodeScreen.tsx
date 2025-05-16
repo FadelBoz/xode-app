@@ -15,9 +15,11 @@ import { CardComponent } from '@/components/ui/CardComponent';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { TextComponent } from '@/components/text/TextComponent';
 import { BlurView } from 'expo-blur';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator,  Image } from 'react-native';
 import { router } from 'expo-router';
-
+import { saveUser } from '@/utils/storage';
+import { API_ENDPOINTS, API_URL } from '@/configs/global';
+import { useAuth } from '@/contexts/AuthContext';
 const PinCodeScreen = () => {
   const col = useThemeColors();
   const [code, setCode] = useState(['', '', '', '', '']);
@@ -26,6 +28,8 @@ const PinCodeScreen = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const { email } = useAuth();
+  const [msg , setMsg] = useState('');
 
   const inputRefs = useRef<Array<TextInput | null>>([null, null, null, null, null]);
   const shake = useRef(new Animated.Value(0)).current;
@@ -38,8 +42,33 @@ const PinCodeScreen = () => {
     }, 100);
   }, []);
 
+  useEffect(()=>{
+    const sendEmeail = async ()=>{
+      try {
+        const response = await fetch(`${API_URL}${API_ENDPOINTS.sendCode}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }, 
+          body:JSON.stringify({email})
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          // router.replace('/homescreen'); // Succès : on passe à l'étape suivante
+        } else {
+          setError(true); 
+          setMsg('Code incorrect. Veuillez réessayer.');// Échec : afficher un message
+        }
+      } catch (err) {
+        setError(true);
+        setMsg(`Une erreur inconnue s'est produite. Veuillez réessayer.`);// Échec : afficher un message
+      }
+    }
+    sendEmeail();
+  }, []);
+
   useEffect(() => {
-    // Start countdown timer
+    // Start countdown timer''
     if (timer > 0 && !canResend) {
       const interval = setInterval(() => {
         setTimer((prevTimer) => prevTimer - 1);
@@ -48,6 +77,7 @@ const PinCodeScreen = () => {
     } else if (timer === 0) {
       setCanResend(true);
     }
+
   }, [timer, canResend]);
 
   const handleInputChange = (text: string, index: number) => {
@@ -113,28 +143,38 @@ const PinCodeScreen = () => {
     }).start();
   };
 
-  const validateCode = (codeToValidate: string[]) => {
-    // Here you would typically call your API to validate the code
-    // For demo purposes, let's assume code "12345" is valid
-    const isValid = codeToValidate.join('') === '12345';
-    
-    if (!isValid) {
+  const validateCode = async (codeToValidate: string[]) => {
+    try {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.verifySendCode}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code: codeToValidate.join('') }), // 🔄 clé correcte
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok && data.user && data.token) {
+        await saveUser({ ...data.user, token: data.token });
+        setError(false);
+        animateBordersToSuccess();
+        setIsVerifying(true);
+  
+        setTimeout(() => {
+          setIsVerifying(false);
+          router.replace('/homescreen');
+        }, 1500);
+      } else {
+        throw new Error();
+      }
+    } catch (e) {
       setError(true);
       shakeAnimation();
       animateBordersToError();
-    } else {
-      setError(false);
-      animateBordersToSuccess();
-      setIsVerifying(true);
-      
-      // Simulate verification process
-      setTimeout(() => {
-        setIsVerifying(false);
-        // Navigate to next screen on success
-        router.replace('/homescreen');
-      }, 1500);
+      setMsg('Code incorrect. Veuillez réessayer.');
     }
-  };
+  };  
 
   const shakeAnimation = () => {
     Animated.sequence([
@@ -279,6 +319,12 @@ const PinCodeScreen = () => {
       marginTop: 20,
       alignItems: 'center',
     },
+    images: {
+      maxHeight:'40%' , 
+      width:'100%',
+      // borderColor:"#fff", 
+      // borderWidth: 2
+    }
   });
 
   return (
@@ -286,18 +332,23 @@ const PinCodeScreen = () => {
       <SafeAreaView style={{ backgroundColor: col.background, flex: 1 }}>
         <CardComponent style={styles.container}>
           <CardComponent style={styles.formParent}>
-            <TextComponent variante="subtitle0">Vérification en 2 étapes</TextComponent>
+            <Image
+             source={require('@/assets/images/laptop.png')}
+             style = {styles.images}
+             resizeMode="contain"
+            />
+            <TextComponent variante="subtitle0">Encore une étape</TextComponent>
             
             <CardComponent style={{ maxWidth: '85%' }}>
               <TextComponent color={col.ring} style={{ textAlign: 'center' }}>
-                Nous avons envoyé un code à 5 chiffres à votre adresse email. Veuillez le saisir ci-dessous.
+                Nous avons envoyé un code à 5 chiffres à l'adresse {email}. Veuillez le saisir ci-dessous.
               </TextComponent>
             </CardComponent>
             
             {isError && (
               <CardComponent>
                 <TextComponent variante='body4' color={col.destructive}>
-                  Code incorrect. Veuillez réessayer.
+                  {msg}
                 </TextComponent>
               </CardComponent>
             )}
