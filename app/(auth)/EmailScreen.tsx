@@ -9,6 +9,8 @@ import { ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { API_ENDPOINTS, API_URL } from '@/configs/global';
 import { useAuth } from '@/contexts/AuthContext';
+import { KeyboardAvoidingView } from 'react-native';
+import { Platform } from 'react-native';
 
 
 const EmailScreen = () => {
@@ -147,78 +149,86 @@ const EmailScreen = () => {
   });
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={{ backgroundColor: col.background, flex: 1 }}>
-        <CardComponent style={styles.container}>
-          <CardComponent style={styles.formParent}>
-            <Image 
-              source={require('@/assets/images/video-calling.png')}
-              resizeMode='contain'
-              style = {styles.images}
+    
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={{ backgroundColor: col.background, flex: 1 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+        >
+          <CardComponent style={styles.container}>
+            <CardComponent style={styles.formParent}>
+              <Image 
+                source={require('@/assets/images/video-calling.png')}
+                resizeMode='contain'
+                style = {styles.images}
 
-            />
-            <TextComponent variante="subtitle0">Connectez-vous</TextComponent>
-            { !isError ? ( <CardComponent style={{ maxWidth: '85%' }}>
-              <TextComponent color={col.ring}>
-                Veuillez remplir votre email de connexion.
-              </TextComponent>
-            </CardComponent>):(
-                <CardComponent>
-                    <TextComponent variante='body4' color={col.destructive}>{error}</TextComponent>
-                </CardComponent>
-            )}
-            <CardComponent style={styles.form}>
-              <Animated.View
-                style={{
-                  borderWidth: 2,
-                  borderRadius: 5,
-                  borderColor: borderColor,
-                  transform: [{ translateX: shake }],
-                  marginBottom: 16,
-                  backgroundColor: col.input,
+              />
+              <TextComponent variante="subtitle0">Connectez-vous</TextComponent>
+              { !isError ? ( <CardComponent style={{ maxWidth: '85%' }}>
+                <TextComponent color={col.ring}>
+                  Veuillez remplir votre email de connexion.
+                </TextComponent>
+              </CardComponent>):(
+                  <CardComponent>
+                      <TextComponent variante='body4' color={col.destructive}>{error}</TextComponent>
+                  </CardComponent>
+              )}
+              <CardComponent style={styles.form}>
+                <Animated.View
+                  style={{
+                    borderWidth: 2,
+                    borderRadius: 5,
+                    borderColor: borderColor,
+                    transform: [{ translateX: shake }],
+                    marginBottom: 16,
+                    backgroundColor: col.input,
 
-                }}
-              >
-                <TextInput
-                  style={styles.urlInput}
-                  placeholder="MonEmail@gmail.com"
-                  placeholderTextColor={col.ring}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setIsValidEmail(true);
                   }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </Animated.View>
+                >
+                  <TextInput
+                    style={styles.urlInput}
+                    placeholder="MonEmail@gmail.com"
+                    placeholderTextColor={col.ring}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    value={email}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      setIsValidEmail(true);
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </Animated.View>
 
-              <TouchableOpacity style={styles.connectButton} onPress={handlePress}>
-                <TextComponent>Vérifier</TextComponent>
-              </TouchableOpacity>
+                <TouchableOpacity style={styles.connectButton} onPress={handlePress}>
+                  <TextComponent>Vérifier</TextComponent>
+                </TouchableOpacity>
+              </CardComponent>
             </CardComponent>
           </CardComponent>
-        </CardComponent>
-        {isSendingEmail && (
-            <BlurView
-                intensity={10}
-                tint="default"
-                style={{
-                ...StyleSheet.absoluteFillObject,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                zIndex: 99, // au-dessus
-                }}
-            >
-            <ActivityIndicator size="large" color={col.primary} />
+          {isSendingEmail && (
+              <BlurView
+                  intensity={10}
+                  tint="default"
+                  style={{
+                  ...StyleSheet.absoluteFillObject,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  zIndex: 99, // au-dessus
+                  }}
+              >
+              <ActivityIndicator size="large" color={col.primary} />
 
-            </BlurView>
-        )}
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+              </BlurView>
+          )}
+        </KeyboardAvoidingView>
+
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
   );
 };
 

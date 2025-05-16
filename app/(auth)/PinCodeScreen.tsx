@@ -8,7 +8,9 @@ import {
   Easing, 
   TouchableWithoutFeedback, 
   Keyboard,
-  Pressable
+  Pressable,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CardComponent } from '@/components/ui/CardComponent';
@@ -330,6 +332,11 @@ const PinCodeScreen = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={{ backgroundColor: col.background, flex: 1 }}>
+      <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+        >
         <CardComponent style={styles.container}>
           <CardComponent style={styles.formParent}>
             <Image
@@ -387,6 +394,7 @@ const PinCodeScreen = () => {
             <ActivityIndicator size="large" color={col.primary} />
           </BlurView>
         )}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
