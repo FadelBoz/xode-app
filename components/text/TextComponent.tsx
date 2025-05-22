@@ -3,8 +3,9 @@ import React from "react";
 import { Text, TextProps, StyleSheet, StyleProp, TextStyle } from "react-native";
 
 const stylles = StyleSheet.create({ 
+    body5: { fontFamily: 'GgSansRegular',fontSize: 14 },
     body4: { fontFamily: 'GgSansRegular',fontSize: 14 },
-    body3: { fontFamily: 'GgSansRegular',fontSize: 16, lineHeight: 20 }, 
+    body3: { fontFamily: 'GgSansRegular',fontSize: 17, lineHeight: 20 }, 
     body2: { fontFamily: 'GgSansRegular',fontSize: 18, lineHeight: 20, fontWeight: "bold" }, 
     headline: { fontFamily: 'GgSansRegular',fontSize: 16, lineHeight: 32, fontWeight: "bold" },  
     caption: { fontSize: 8, lineHeight: 12 },  

@@ -21,9 +21,8 @@ export const color = {
       
         primary: "#334155",     
         primary2:"#0ab9d5", 
-        primary3: "#31197b",           // 240 5% 65%
-                   // 240 5% 65%
-                 // 220.2 21.5% 22.5% (tu as une petite erreur sur ton css, je corrige ici)
+        primary3: "#31197b",  
+        blueSingle:"#3ad4d4",       // 240 5% 65%
         primaryForeground: "#F1F5F9",    // 210 40% 98%
       
         secondary: "#F8FAFC",            // 210 40% 96%
@@ -76,7 +75,8 @@ export const color = {
         
         primary: "#4b15f1",    
         primary2:"#390ebf",  
-        primary3: "#5035a1",           // 240 5% 65%
+        primary3: "#5035a1",    
+        blueSingle:"#3998be",       // 240 5% 65%
         primaryForeground: "#1A1A1A",      // 240 5% 10%
         
         secondary: "#333333",              // 240 4% 20%

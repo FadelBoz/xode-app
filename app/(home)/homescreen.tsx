@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router'; // Ajoutez cette importation
@@ -7,12 +7,21 @@ import { useThemeColors } from '@/hooks/useThemeColors';
 import { TextComponent } from '@/components/text/TextComponent';
 import ScannerIcon from '@/components/ui/ScannerIcon';
 import EmojiIcon from '@/components/ui/EmojiIcon';
-
+import { getUser } from '@/utils/storage';
+import TerminalIcon from '@/components/ui/TerminalIcon';
 const HomeScreen = () => {
   const [isUrlInputVisible, setIsUrlInputVisible] = useState(false);
   const router = useRouter(); // Ajoutez cette ligne
   const col = useThemeColors();
+  const [userName, setUserName] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await getUser();
+      setUserName(user?.name ?? null); // ou user?.email selon ce que tu veux afficher
+    };
+    fetchUser();
+  }, []);
   const styles = StyleSheet.create({
     appBar: {
       backgroundColor: col.card,
@@ -45,6 +54,8 @@ const HomeScreen = () => {
       backgroundColor: col.card,
       borderRadius: 8,
       overflow: 'hidden',
+      borderWidth:1, 
+      borderColor:col.border
     },
     signInPrompt: {
       padding: 16,
@@ -112,6 +123,8 @@ const HomeScreen = () => {
       backgroundColor: col.card,
       borderRadius: 8,
       padding: 16,
+      borderWidth:1, 
+      borderColor:col.border,
       flexDirection: 'row',
       alignItems: 'center',
     },
@@ -119,8 +132,8 @@ const HomeScreen = () => {
       width: 36,
       height: 36,
       borderRadius: 8,
-      // borderColor: col.borderGreen, 
-      // borderWidth:0.5,
+      borderWidth:1, 
+      borderColor:col.border,
       backgroundColor: col.card2,
       justifyContent: 'center',
       alignItems: 'center',
@@ -134,6 +147,9 @@ const HomeScreen = () => {
       color: '#8D8D8D',
       fontSize: 24,
     },
+    terminalIcon:{
+      color:col.validated
+    }
   });
 
   return ( 
@@ -148,13 +164,14 @@ const HomeScreen = () => {
         <CardComponent style={styles.section}>
           <CardComponent style={styles.sectionHeader}>
             <CardComponent style={styles.serverIcon}>
-              <TextComponent>$~</TextComponent>
+              <TextComponent style={styles.terminalIcon}>$~</TextComponent>
             </CardComponent>
             <CardComponent style={styles.sectionTitle}>
-              <TextComponent >Hy ! Wistoria.dev </TextComponent>
+              {/* <TextComponent >{userName ? userName : 'Guest'}</TextComponent> */}
+              <TextComponent>Server de Développement</TextComponent>
             </CardComponent>
             <TouchableOpacity>
-              <TextComponent  color={col.orange} >HELP</TextComponent>
+              <TextComponent  color={col.icon} >HELP</TextComponent>
             </TouchableOpacity>
           </CardComponent>
           
@@ -162,9 +179,7 @@ const HomeScreen = () => {
           <CardComponent style={styles.signInCard}>
             <TouchableOpacity style={styles.signInPrompt}>
               <TextComponent>
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Placeat laboriosam sint 
-                unde porro eveniet voluptatem rerum veritatis reprehenderit consequatur suscipit architecto
-                ea saepe tenetur atque ullam deleniti repellendus, non magnam!
+                Appuyez ici pour vous connectez à votre projet ou Scanner directement le code Qr afficher sur votre écran.
               </TextComponent>
             </TouchableOpacity>
             
@@ -173,7 +188,7 @@ const HomeScreen = () => {
               onPress={() => setIsUrlInputVisible(!isUrlInputVisible)}
             >
               <TextComponent >
-                {isUrlInputVisible ? '▼' : '▶'} Enter URL manually
+                {isUrlInputVisible ? '▼' : '▶'} Entrer manuellement
               </TextComponent>
             </TouchableOpacity>
             
@@ -184,7 +199,8 @@ const HomeScreen = () => {
                   placeholder="https://"
                   placeholderTextColor= {col.ring}
                 />
-                <TouchableOpacity style={styles.connectButton}>
+                <TouchableOpacity style={styles.connectButton}
+                onPress={()=>router.push('/renderChatItem') }>
                   <TextComponent>Connect</TextComponent>
                 </TouchableOpacity>
               </CardComponent>
@@ -196,7 +212,7 @@ const HomeScreen = () => {
               <CardComponent style={styles.qrIconContainer}>
                 <ScannerIcon/>
               </CardComponent>
-              <TextComponent >Scan QR code</TextComponent>
+              <TextComponent >Scanner QR</TextComponent>
             </TouchableOpacity>
           </CardComponent>
         </CardComponent>
@@ -206,16 +222,16 @@ const HomeScreen = () => {
           <CardComponent style={styles.recentHeader}>
             <TextComponent >Recently opened</TextComponent>
             <TouchableOpacity>
-              <TextComponent variante='body4' color={col.destructive}>CLEAR</TextComponent>
+              <TextComponent variante='body4' color="#ee2a15">CLEAR</TextComponent>
             </TouchableOpacity>
           </CardComponent>
           
           <TouchableOpacity style={styles.recentItem}>
             <CardComponent style={styles.appIconContainer}>
               <Image 
-                source={require('@/assets/images/react-logo.png')} 
+                source={require('@/assets/images/partial-react-logo.png')} 
                 style={styles.appIcon} 
-                // blurRadius={10}
+                // blurRadius={18}
               />
             </CardComponent>
             <TextComponent>xode-app</TextComponent>
