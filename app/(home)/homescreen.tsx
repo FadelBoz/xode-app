@@ -40,7 +40,7 @@ const HomeScreen = () => {
     serverIcon: {
       width: 20,
       height: 20,
-      backgroundColor: col.card,
+      // backgroundColor: col.card,
       borderRadius: 5,
       justifyContent: 'center',
       alignItems: 'center',
@@ -80,14 +80,14 @@ const HomeScreen = () => {
       backgroundColor: col.card
     },
     urlInput: {
-      backgroundColor: col.border,
+      backgroundColor: col.input,
       color: col.text,
       padding: 12,
       borderRadius: 6,
       marginBottom: 16,
     },
     connectButton: {
-      backgroundColor: col.submit,
+      backgroundColor: col.validated,
       padding: 14,
       borderRadius: 6,
       alignItems: 'center',
@@ -134,7 +134,7 @@ const HomeScreen = () => {
       borderRadius: 8,
       borderWidth:1, 
       borderColor:col.border,
-      backgroundColor: col.card2,
+      backgroundColor: col.card,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 16,
@@ -147,13 +147,10 @@ const HomeScreen = () => {
       color: '#8D8D8D',
       fontSize: 24,
     },
-    terminalIcon:{
-      color:col.validated
-    }
   });
 
   return ( 
-    <SafeAreaView style = {{backgroundColor: col.card , flex: 1}}>
+    <SafeAreaView style = {{backgroundColor: col.card, flex: 1}}>
       {/* App Bar */}
       <CardComponent style={styles.appBar}>
           <TextComponent variante='subtitle1' color={col.icon}>XD</TextComponent>
@@ -164,21 +161,22 @@ const HomeScreen = () => {
         <CardComponent style={styles.section}>
           <CardComponent style={styles.sectionHeader}>
             <CardComponent style={styles.serverIcon}>
-              <TextComponent style={styles.terminalIcon}>$~</TextComponent>
+              {/* <TextComponent style={styles.terminalIcon}>$~</TextComponent> */}
+              <TerminalIcon width='28' height='30' fillColor={col.icon}></TerminalIcon>
             </CardComponent>
             <CardComponent style={styles.sectionTitle}>
               {/* <TextComponent >{userName ? userName : 'Guest'}</TextComponent> */}
-              <TextComponent>Server de Développement</TextComponent>
+              <TextComponent color={col.text2}>Server de Développement</TextComponent>
             </CardComponent>
             <TouchableOpacity>
-              <TextComponent  color={col.icon} >HELP</TextComponent>
+              <TextComponent  color={col.iconNoSelected} >HELP</TextComponent>
             </TouchableOpacity>
           </CardComponent>
           
           {/* Sign In Card */}
           <CardComponent style={styles.signInCard}>
             <TouchableOpacity style={styles.signInPrompt}>
-              <TextComponent>
+              <TextComponent color={col.text}>
                 Appuyez ici pour vous connectez à votre projet ou Scanner directement le code Qr afficher sur votre écran.
               </TextComponent>
             </TouchableOpacity>
@@ -197,7 +195,7 @@ const HomeScreen = () => {
                 <TextInput
                   style={styles.urlInput}
                   placeholder="https://"
-                  placeholderTextColor= {col.ring}
+                  placeholderTextColor= {col.iconNoSelected}
                 />
                 <TouchableOpacity style={styles.connectButton}
                 onPress={()=>router.push('/renderChatItem') }>
@@ -220,7 +218,7 @@ const HomeScreen = () => {
         {/* Recently Opened Section */}
         <CardComponent style={styles.recentSection}>
           <CardComponent style={styles.recentHeader}>
-            <TextComponent >Recently opened</TextComponent>
+            <TextComponent color={col.iconNoSelected} >Recently opened</TextComponent>
             <TouchableOpacity>
               <TextComponent variante='body4' color="#ee2a15">CLEAR</TextComponent>
             </TouchableOpacity>

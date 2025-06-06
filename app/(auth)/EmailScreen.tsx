@@ -97,7 +97,7 @@ const EmailScreen = () => {
   
   const borderColor = animatedBorder.interpolate({
     inputRange: [0, 1],
-    outputRange: [col.border, isValidEmail ? col.primary3 :  col.destructive],
+    outputRange: [col.border, isValidEmail ? col.primary :  col.destructive],
   });
 
   const styles = StyleSheet.create({
@@ -126,7 +126,7 @@ const EmailScreen = () => {
       borderRadius: 10,
     },
     connectButton: {
-      backgroundColor: col.submit,
+      backgroundColor: col.primary,
       padding: 14,
       borderRadius: 5,
       minWidth: '88%',
