@@ -28,7 +28,7 @@ const BuildLoadScreen = () => {
           // Redirection vers buildscreen.tsx
           // Utiliser setTimeout pour laisser le message "Build Complete!" visible un court instant
           setTimeout(() => {
-            router.replace('/buildscreen'); // Rediriger vers buildscreen
+            router.replace('/project/buildscreen'); // Rediriger vers buildscreen
           }, 1000); // Délai de 1 seconde avant la redirection
 
           return 100;

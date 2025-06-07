@@ -84,7 +84,7 @@ const ScanScreen = () => {
       console.log(`QR Code Data to pass: ${scanningResult.data}`); // Pour débogage
       // Naviguer vers buildloadscreen en passant les données du QR code
       router.replace({
-        pathname: '/buildloadscreen',
+        pathname: '/project/buildloadscreen',
         params: { qrData: scanningResult.data }, // Passer les données ici
       });
     } else {
