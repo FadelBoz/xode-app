@@ -239,7 +239,7 @@ const PinCodeScreen = () => {
         inputRange: [0, 1, 2, 3],
         outputRange: [
           col.border, // Default
-          col.primary2, // Focused
+          col.validatedGreen, // Focused
           col.destructive, // Error
           col.primaryForeground || 'green', // Success
         ],
@@ -367,7 +367,7 @@ const PinCodeScreen = () => {
             <TouchableOpacity 
               style={[
                 styles.resendButton, 
-                { backgroundColor: canResend ? col.submit : 'transparent' }
+                { backgroundColor: canResend ? col.validatedGreen : 'transparent' }
               ]} 
               onPress={handleResendCode}
               disabled={!canResend}
