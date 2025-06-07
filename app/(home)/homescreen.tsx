@@ -1,27 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, StatusBar } from 'react-native';
+// xode-app/app/(home)/homescreen.tsx
+
+import React, { useEffect, useState, useRef } from 'react';
+import { 
+  View, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  Image, 
+  StatusBar, 
+  Animated,
+  Easing,
+  Keyboard
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router'; // Ajoutez cette importation
+import { useRouter } from 'expo-router';
 import { CardComponent } from '@/components/ui/CardComponent';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { TextComponent } from '@/components/text/TextComponent';
 import ScannerIcon from '@/components/ui/ScannerIcon';
-import EmojiIcon from '@/components/ui/EmojiIcon';
 import { getUser } from '@/utils/storage';
 import TerminalIcon from '@/components/ui/TerminalIcon';
+
 const HomeScreen = () => {
   const [isUrlInputVisible, setIsUrlInputVisible] = useState(false);
-  const router = useRouter(); // Ajoutez cette ligne
+  const router = useRouter();
   const col = useThemeColors();
   const [userName, setUserName] = useState<string | null>(null);
+
+  const [url, setUrl] = useState('');
+  const [isValidUrl, setIsValidUrl] = useState(true);
+  const [error, setError] = useState('');
+
+  const animatedBorder = useRef(new Animated.Value(0)).current;
+  const shake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const fetchUser = async () => {
       const user = await getUser();
-      setUserName(user?.name ?? null); // ou user?.email selon ce que tu veux afficher
+      setUserName(user?.name ?? null);
     };
     fetchUser();
   }, []);
+  
+  const handleFocus = () => {
+    setIsValidUrl(true);
+    setError('');
+    Animated.timing(animatedBorder, {
+      toValue: 1,
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleBlur = () => {
+    Animated.timing(animatedBorder, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const shakeAnimation = () => {
+    // CORRECTION : useNativeDriver mis à false pour correspondre à l'animation de bordure
+    Animated.sequence([
+      Animated.timing(shake, { toValue: 5, duration: 50, useNativeDriver: false }),
+      Animated.timing(shake, { toValue: -5, duration: 50, useNativeDriver: false }),
+      Animated.timing(shake, { toValue: 5, duration: 50, useNativeDriver: false }),
+      Animated.timing(shake, { toValue: 0, duration: 50, useNativeDriver: false }),
+    ]).start();
+  };
+  
+  const validateAndConnect = () => {
+    Keyboard.dismiss();
+    const urlRegex = /^xd:\/\/.+/;
+    if (!urlRegex.test(url)) {
+      setIsValidUrl(false);
+      setError('L\'URL doit commencer par "xd://"');
+      shakeAnimation();
+      animatedBorder.setValue(1);
+      return;
+    }
+    
+    setIsValidUrl(true);
+    setError('');
+    console.log('Connexion au projet avec l\'URL:', url);
+    router.push('/renderChatItem');
+  };
+
+  const currentBorderColor = animatedBorder.interpolate({
+    inputRange: [0, 1],
+    outputRange: [col.input, isValidUrl ? col.border : col.destructiveForeground],
+  });
+  
   const styles = StyleSheet.create({
     appBar: {
       backgroundColor: col.card,
@@ -40,7 +111,6 @@ const HomeScreen = () => {
     serverIcon: {
       width: 20,
       height: 20,
-      // backgroundColor: col.card,
       borderRadius: 5,
       justifyContent: 'center',
       alignItems: 'center',
@@ -84,7 +154,7 @@ const HomeScreen = () => {
       color: col.text,
       padding: 12,
       borderRadius: 6,
-      marginBottom: 16,
+      // marginBottom: 8,
     },
     connectButton: {
       backgroundColor: col.validated,
@@ -92,7 +162,6 @@ const HomeScreen = () => {
       borderRadius: 6,
       alignItems: 'center',
     },
-
     qrOption: {
       padding: 16,
       flexDirection: 'row',
@@ -102,14 +171,6 @@ const HomeScreen = () => {
       marginRight: 8,
       backgroundColor:col.card
     },
-    qrIcon: {
-      color: '#FFFFFF',
-      fontSize: 20,
-    },
-    qrOptionText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-    },
     recentSection: {
       padding: 16,
     },
@@ -118,7 +179,6 @@ const HomeScreen = () => {
       justifyContent: 'space-between',
       marginBottom: 16,
     },
-
     recentItem: {
       backgroundColor: col.card,
       borderRadius: 8,
@@ -143,44 +203,42 @@ const HomeScreen = () => {
       width: 24,
       height: 24,
     },
-    chevron: {
-      color: '#8D8D8D',
-      fontSize: 24,
+    animatedInputWrapper: {
+      borderWidth: 2,
+      borderRadius: 8,
+      marginBottom: 8,
     },
+    errorText: {
+        marginBottom: 8,
+        textAlign: 'center'
+    }
   });
 
   return ( 
     <SafeAreaView style = {{backgroundColor: col.card, flex: 1}}>
-      {/* App Bar */}
       <CardComponent style={styles.appBar}>
           <TextComponent variante='subtitle1' color={col.icon}>XD</TextComponent>
       </CardComponent>
       <CardComponent style={{backgroundColor: col.background, flex:1}}>
-        
-        {/* Development Servers Section */}
         <CardComponent style={styles.section}>
           <CardComponent style={styles.sectionHeader}>
             <CardComponent style={styles.serverIcon}>
-              {/* <TextComponent style={styles.terminalIcon}>$~</TextComponent> */}
               <TerminalIcon width='28' height='30' fillColor={col.icon}></TerminalIcon>
             </CardComponent>
             <CardComponent style={styles.sectionTitle}>
-              {/* <TextComponent >{userName ? userName : 'Guest'}</TextComponent> */}
               <TextComponent color={col.text2}>Server de Développement</TextComponent>
             </CardComponent>
             <TouchableOpacity>
               <TextComponent  color={col.iconNoSelected} >HELP</TextComponent>
             </TouchableOpacity>
           </CardComponent>
-          
-          {/* Sign In Card */}
           <CardComponent style={styles.signInCard}>
             <TouchableOpacity style={styles.signInPrompt}>
               <TextComponent color={col.text}>
                 Appuyez ici pour vous connectez à votre projet ou Scanner directement le code Qr afficher sur votre écran.
               </TextComponent>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={styles.urlOption}
               onPress={() => setIsUrlInputVisible(!isUrlInputVisible)}
@@ -192,20 +250,40 @@ const HomeScreen = () => {
             
             {isUrlInputVisible && (
               <CardComponent style={styles.urlInputContainer}>
-                <TextInput
-                  style={styles.urlInput}
-                  placeholder="https://"
-                  placeholderTextColor= {col.iconNoSelected}
-                />
-                <TouchableOpacity style={styles.connectButton}
-                onPress={()=>router.push('/renderChatItem') }>
+                <Animated.View style={[
+                    styles.animatedInputWrapper,
+                    { 
+                        borderColor: currentBorderColor,
+                        transform: [{ translateX: shake }]
+                    }
+                ]}>
+                    <TextInput
+                      style={styles.urlInput}
+                      placeholder="xd://mon-projet"
+                      placeholderTextColor={col.iconNoSelected}
+                      value={url}
+                      onChangeText={setUrl}
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
+                      autoCapitalize="none"
+                    />
+                </Animated.View>
+                {/* {!isValidUrl && (
+                    <TextComponent variante='body5' color={col.destructiveForeground} style={styles.errorText}>
+                        {error}
+                    </TextComponent>
+                )} */}
+                <TouchableOpacity 
+                    style={styles.connectButton}
+                    onPress={validateAndConnect}
+                >
                   <TextComponent>Connect</TextComponent>
                 </TouchableOpacity>
               </CardComponent>
             )}
             <TouchableOpacity 
               style={styles.qrOption}
-              onPress={() => router.push('/scanscreen')} // Modifiez cette ligne
+              onPress={() => router.push('/scanscreen')}
             >
               <CardComponent style={styles.qrIconContainer}>
                 <ScannerIcon/>
@@ -215,12 +293,11 @@ const HomeScreen = () => {
           </CardComponent>
         </CardComponent>
         
-        {/* Recently Opened Section */}
         <CardComponent style={styles.recentSection}>
           <CardComponent style={styles.recentHeader}>
             <TextComponent color={col.iconNoSelected} >Recently opened</TextComponent>
             <TouchableOpacity>
-              <TextComponent variante='body4' color="#ee2a15">CLEAR</TextComponent>
+              <TextComponent variante='body4' color={col.destructiveForeground}>CLEAR</TextComponent>
             </TouchableOpacity>
           </CardComponent>
           
@@ -229,7 +306,6 @@ const HomeScreen = () => {
               <Image 
                 source={require('@/assets/images/partial-react-logo.png')} 
                 style={styles.appIcon} 
-                // blurRadius={18}
               />
             </CardComponent>
             <TextComponent>xode-app</TextComponent>
@@ -240,7 +316,5 @@ const HomeScreen = () => {
     </SafeAreaView>
   );
 };
-
-
 
 export default HomeScreen;

@@ -78,7 +78,7 @@ export const color = {
     
     // Couleurs sémantiques
     destructive: "#ED4245",      // Rouge Discord
-    destructiveForeground: "#FFFFFF",
+    destructiveForeground: "#ee2a15",
     validated: "#6667e6",        // Vert Discord
     // validatedForeground: "#000000", // *À vérifier*
     
