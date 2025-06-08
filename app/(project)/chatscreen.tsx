@@ -118,21 +118,58 @@ const ChatScreen = () => {
     });
   };
 
-  const handleSend = () => {
-    if (inputText.trim()) {
-      const newMessage: Message = { 
-        id: String(Date.now()), 
-        text: inputText.trim(), 
-        sender: 'user',
-        username: 'Vous',
-        timestamp: new Date().toLocaleString(),
-        isConsecutive: false
-      };
-      setMessages(prevMessages => {
-        const updatedMessages = [newMessage, ...prevMessages];
-        return processMessages(updatedMessages);
+  const handleSend = async () => {
+    const trimmedText = inputText.trim();
+    if (!trimmedText || !project) {
+      return;
+    }
+
+    // Vider le champ de saisie immédiatement pour une meilleure réactivité
+    setInputText('');
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Erreur", "Vous n'êtes pas authentifié.");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}projects/${project.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          project_id: project.id,
+          content: trimmedText,
+        }),
       });
-      setInputText('');
+
+      if (!response.ok) {
+        throw new Error("Le message n'a pas pu être envoyé.");
+      }
+
+      const savedMessageData = await response.json();
+      
+      // Transformer la réponse de l'API en un objet Message pour le frontend
+      const newMessage: Message = {
+        id: String(savedMessageData.message.id),
+        text: savedMessageData.message.content,
+        sender: 'user', // L'expéditeur est toujours l'utilisateur actuel
+        timestamp: savedMessageData.message.created_at,
+        username: 'Vous', // On peut affiner ceci plus tard
+      };
+
+      // Mettre à jour l'état avec le nouveau message confirmé par le serveur
+      setMessages(prevMessages => processMessages([newMessage, ...prevMessages]));
+
+    } catch (error: any) {
+      console.error("Erreur lors de l'envoi du message:", error);
+      Alert.alert("Erreur", error.message || "Impossible d'envoyer le message.");
+      // Optionnel: remettre le texte dans le champ si l'envoi échoue
+      setInputText(trimmedText);
     }
   };
 
@@ -362,7 +399,7 @@ const ChatScreen = () => {
             {isFirstMessage && (
               <View style={styles.messageHeader}>
                 <TextComponent 
-                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.validatedGreen }]}
+                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.destructive }]}
                 >
                   {item.username || (item.sender === 'user' ? 'Vous' : 'Utilisateur')}
                 </TextComponent>
