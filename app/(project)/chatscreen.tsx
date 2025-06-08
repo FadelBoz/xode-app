@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 
 // Import des composants et hooks du projet
@@ -39,7 +40,9 @@ interface Message {
   avatar?: string;
   timestamp?: string;
   username?: string;
-  isConsecutive?: boolean; // Pour savoir si c'est un message consécutif du même utilisateur
+  isConsecutive?: boolean;
+  type?: 'text' | 'image'; // Type de message
+  imageUri?: string; // URI de l'image si c'est un message image
 }
 
 const ChatScreen = () => {
@@ -56,8 +59,8 @@ const ChatScreen = () => {
   const [inputText, setInputText] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isActionMenuVisible, setIsActionMenuVisible] = useState(false);
+  const [isAttachmentMenuVisible, setIsAttachmentMenuVisible] = useState(false);
 
-   // MODIFICATION: useEffect charge maintenant le projet ET les messages
    useEffect(() => {
     const loadData = async () => {
       try {
@@ -170,6 +173,80 @@ const ChatScreen = () => {
       Alert.alert("Erreur", error.message || "Impossible d'envoyer le message.");
       // Optionnel: remettre le texte dans le champ si l'envoi échoue
       setInputText(trimmedText);
+    }
+  };
+  const handleImagePicker = async () => {
+    setIsAttachmentMenuVisible(false);
+    
+    // Demander les permissions
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission refusée", "Vous devez autoriser l'accès à la galerie pour envoyer des images.");
+      return;
+    }
+
+    // Ouvrir la galerie
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const newMessage: Message = {
+        id: String(Date.now()),
+        text: '', // Pas de texte pour les images
+        sender: 'user',
+        username: 'Vous',
+        timestamp: new Date().toLocaleString(),
+        isConsecutive: false,
+        type: 'image',
+        imageUri: result.assets[0].uri
+      };
+      
+      setMessages(prevMessages => {
+        const updatedMessages = [newMessage, ...prevMessages];
+        return processMessages(updatedMessages);
+      });
+    }
+  };
+
+  const handleCamera = async () => {
+    setIsAttachmentMenuVisible(false);
+    
+    // Demander les permissions
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission refusée", "Vous devez autoriser l'accès à la caméra pour prendre des photos.");
+      return;
+    }
+
+    // Ouvrir la caméra
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const newMessage: Message = {
+        id: String(Date.now()),
+        text: '',
+        sender: 'user',
+        username: 'Vous',
+        timestamp: new Date().toLocaleString(),
+        isConsecutive: false,
+        type: 'image',
+        imageUri: result.assets[0].uri
+      };
+      
+      setMessages(prevMessages => {
+        const updatedMessages = [newMessage, ...prevMessages];
+        return processMessages(updatedMessages);
+      });
     }
   };
 
@@ -294,6 +371,12 @@ const ChatScreen = () => {
     messageTextConsecutive: {
       marginTop: 0,
     },
+    messageImage: {
+      maxWidth: 300,
+      maxHeight: 200,
+      borderRadius: 8,
+      marginTop: 4,
+    },
     // Hover effect (pour les long press)
     messageHover: {
       backgroundColor: colors.input,
@@ -309,7 +392,12 @@ const ChatScreen = () => {
       borderTopWidth: 1,
       borderTopColor: colors.border,
       backgroundColor: colors.background2,
-      alignItems: 'center',
+      alignItems: 'flex-end',
+    },
+    attachmentButton: {
+      padding: 8,
+      marginRight: 8,
+      marginBottom: 2,
     },
     input: {
       flex: 1,
@@ -324,6 +412,7 @@ const ChatScreen = () => {
     },
     sendButton: {
       padding: 8,
+      marginBottom: 2,
     },
     modalOverlay: {
       flex: 1,
@@ -350,6 +439,24 @@ const ChatScreen = () => {
       borderBottomWidth: 0,
       marginTop: 8,
       backgroundColor: colors.card,
+    },
+    attachmentMenu: {
+      backgroundColor: colors.card,
+      marginHorizontal: 16,
+      marginBottom: Platform.OS === 'ios' ? 40 : 16,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    attachmentMenuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    attachmentMenuIcon: {
+      marginRight: 12,
     },
     listFooter: {
       alignItems: 'center',
@@ -399,7 +506,8 @@ const ChatScreen = () => {
             {isFirstMessage && (
               <View style={styles.messageHeader}>
                 <TextComponent 
-                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.destructive }]}
+                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.text }]}
+                  // variante="body"
                 >
                   {item.username || (item.sender === 'user' ? 'Vous' : 'Utilisateur')}
                 </TextComponent>
@@ -412,16 +520,25 @@ const ChatScreen = () => {
               </View>
             )}
             
-            <TextComponent 
-              style={[
-                styles.messageText, 
-                !isFirstMessage && styles.messageTextConsecutive,
-                { color: colors.text }
-              ]}
-              // variante="body"
-            >
-              {item.text}
-            </TextComponent>
+            {/* Contenu du message selon le type */}
+            {item.type === 'image' && item.imageUri ? (
+              <Image 
+                source={{ uri: item.imageUri }} 
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <TextComponent 
+                style={[
+                  styles.messageText, 
+                  !isFirstMessage && styles.messageTextConsecutive,
+                  { color: colors.text }
+                ]}
+                // variante="body"
+              >
+                {item.text}
+              </TextComponent>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -483,6 +600,13 @@ const ChatScreen = () => {
         />
 
         <CardComponent style={styles.inputContainer}>
+          <TouchableOpacity 
+            style={styles.attachmentButton}
+            onPress={() => setIsAttachmentMenuVisible(true)}
+          >
+            <MaterialIcons name="add" size={24} color={colors.icon} />
+          </TouchableOpacity>
+          
           <TextInput 
             style={styles.input} 
             value={inputText} 
@@ -527,6 +651,55 @@ const ChatScreen = () => {
               onPress={closeActionMenu}
             >
               <TextComponent color={colors.primary} style={{textAlign: 'center'}}>
+                Annuler
+              </TextComponent>
+            </TouchableOpacity>
+          </CardComponent>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Menu des pièces jointes */}
+      <Modal 
+        transparent={true} 
+        visible={isAttachmentMenuVisible} 
+        onRequestClose={() => setIsAttachmentMenuVisible(false)} 
+        animationType="fade"
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPressOut={() => setIsAttachmentMenuVisible(false)}
+        >
+          <CardComponent style={styles.attachmentMenu}>
+            <TouchableOpacity style={styles.attachmentMenuItem} onPress={handleImagePicker}>
+              <MaterialIcons 
+                name="photo-library" 
+                size={24} 
+                color={colors.primary} 
+                style={styles.attachmentMenuIcon}
+              />
+              <TextComponent color={colors.text}>
+                Choisir depuis la galerie
+              </TextComponent>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.attachmentMenuItem} onPress={handleCamera}>
+              <MaterialIcons 
+                name="camera-alt" 
+                size={24} 
+                color={colors.primary} 
+                style={styles.attachmentMenuIcon}
+              />
+              <TextComponent color={colors.text}>
+                Prendre une photo
+              </TextComponent>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.attachmentMenuItem, styles.cancelAction]} 
+              onPress={() => setIsAttachmentMenuVisible(false)}
+            >
+              <TextComponent color={colors.primary} style={{textAlign: 'center', flex: 1}}>
                 Annuler
               </TextComponent>
             </TouchableOpacity>
