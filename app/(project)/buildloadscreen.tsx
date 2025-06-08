@@ -1,111 +1,96 @@
-// app/buildloadscreen.tsx
-import React, { useState, useEffect } from 'react';
+// app/project/buildloadscreen.tsx
+
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useProjectLoader } from '@/hooks/useProjectLoader'; // AJOUT: Importer notre nouveau hook
+import { useThemeColors } from '@/hooks/useThemeColors'; // AJOUT: Pour les couleurs
+import { TextComponent } from '@/components/text/TextComponent'; // AJOUT: Pour un affichage cohérent
 
 const BuildLoadScreen = () => {
   const params = useLocalSearchParams<{ qrData?: string }>();
-  const router = useRouter(); // Importer et utiliser useRouter pour la navigation
-  const [progress, setProgress] = useState(5);
-  const [loadingMessage, setLoadingMessage] = useState('Building...');
+  const router = useRouter();
+  const colors = useThemeColors();
 
+  // UTILISATION DU HOOK: Toute la logique complexe est maintenant ici.
+  const { isLoading, error, progress, loadingMessage } = useProjectLoader(params.qrData);
+
+  // Ce `useEffect` gère la redirection une fois le chargement terminé.
   useEffect(() => {
-    if (params.qrData) {
-      console.log("Données QR reçues dans buildloadscreen:", params.qrData);
-      // setLoadingMessage(`Processing data: ${params.qrData.substring(0, 20)}...`);
-    } else {
-      console.log("Aucune donnée QR reçue dans buildloadscreen.");
-    }
-
-    const interval = setInterval(() => {
-      setProgress(prevProgress => {
-        if (prevProgress >= 100) {
-          clearInterval(interval);
-          setLoadingMessage('Build Complete!');
-          console.log("Chargement terminé. Données QR traitées (si applicable):", params.qrData);
-
-          // Redirection vers buildscreen.tsx
-          // Utiliser setTimeout pour laisser le message "Build Complete!" visible un court instant
-          setTimeout(() => {
-            router.replace('/(project)/buildscreen'); // Rediriger vers buildscreen
-          }, 1000); // Délai de 1 seconde avant la redirection
-
-          return 100;
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        if (error) {
+          // En cas d'erreur, on pourrait retourner à l'accueil avec un message
+          // Pour l'instant, on retourne simplemement.
+          console.error("Redirection annulée à cause d'une erreur:", error);
+          router.back();
+        } else {
+          // Si tout s'est bien passé, on redirige vers l'écran du projet.
+          // Note : La redirection vers buildscreen n'est peut-être plus nécessaire, 
+          // on pourrait aller directement à homeprojectscreen.
+          router.replace('/homeprojectscreen');
         }
-        return prevProgress + 10;
-      });
-    }, 300);
+      }, 1200); // On laisse un peu de temps pour afficher le message final.
 
-    return () => clearInterval(interval);
-  }, [params.qrData, router]); // Assurez-vous que router est dans les dépendances
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, error, router]);
+
+
+  // Le reste du composant est juste pour l'affichage.
+  const styles = StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1 },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingTop: 15,
+      alignItems: 'center',
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 20,
+      padding: 20,
+    },
+    xdText: {
+      fontSize: 80,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    errorText: {
+      color: colors.destructive,
+      textAlign: 'center',
+    }
+  });
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle={colors.text === '#FFFFFF' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>{loadingMessage}</Text>
-          <Text style={styles.progressText}>{String(progress).padStart(3, '0')}%</Text>
+          <TextComponent variante='subtitle2'>{loadingMessage}</TextComponent>
+          <TextComponent variante='subtitle2'>{String(progress).padStart(3, '0')}%</TextComponent>
         </View>
         <View style={styles.content}>
-          {progress < 100 ? (
-            <ActivityIndicator size="large" color="#000000" />
+          {isLoading ? (
+            <ActivityIndicator size="large" color={colors.primary} />
+          ) : error ? (
+            <>
+              <TextComponent variante='subtitle0' color={colors.destructive}>Erreur</TextComponent>
+              <TextComponent style={styles.errorText}>{error}</TextComponent>
+            </>
           ) : (
             <Text style={styles.xdText}>XD</Text>
           )}
-           {params.qrData && progress === 100 && (
-            <Text style={styles.qrDataText}>QR Data: {params.qrData}</Text>
-           )}
         </View>
       </View>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    alignItems: 'center',
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  progressText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  xdText: {
-    fontSize: 80,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginTop: 20,
-  },
-  qrDataText: {
-    marginTop: 15,
-    fontSize: 14,
-    color: 'gray',
-    paddingHorizontal: 20,
-    textAlign: 'center',
-  }
-});
 
 export default BuildLoadScreen;

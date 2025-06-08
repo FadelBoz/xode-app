@@ -79,7 +79,7 @@ export function DynamicLineVersion({ data }: DynamicLineVersionProps) {
           {/* Colonne de gauche avec l'icône et la ligne */}
           <View style={styles.timelineGutter}>
             <View style={styles.iconContainer}>
-              <FolderIcon fillColor={colors.primary} />
+              <FolderIcon fillColor={colors.fuchsia} />
             </View>
             {index < data.length - 1 && <View style={styles.line} />}
           </View>

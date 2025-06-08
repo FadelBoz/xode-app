@@ -101,7 +101,7 @@ const HomeScreen = () => {
         if (json.exists) {
           router.replace({
             pathname: '/buildloadscreen',
-            params: { qrData: getUrl } 
+            params: { qrData: url } 
           });
         } else {
           setError('Projet introuvable.');

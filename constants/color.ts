@@ -102,53 +102,10 @@ export const color = {
 
     // Autres couleurs de la marque Discord
     yellow: "#FEE75C",
-    fuchsia: "#EB459E",
+    fuchsia: "#c95a22",
     validatedGreen:"#2d6d48",
-    redIcon: "#fb3e42"
+    redIcon: "#fb3e42", 
+    greyple: "#99aab5", 
   },
 
-  // ===== Thème Midnight (AMOLED) =====
-  midnight: {
-    // Couleurs de fond
-    background: "#000000",      // Noir pur
-    foreground: "#FFFFFF",      // Texte principal généralement blanc
-    background2: "#000000",     // Les arrière-plans secondaires sont souvent aussi noirs purs
-    
-    // Cartes et Popovers
-    card: "#0E0E0E",            // Un gris très foncé, proche du noir, ou noir pur. #111214 a été vu pour les profils. *Approximation*
-    cardForeground: "#FFFFFF",    // Texte sur les cartes
-    popover: "#0A0A0A",           // Fond des popovers, très foncé - *Approximation*
-    popoverForeground: "#E0E0E0", // Texte dans les popovers (blanc cassé) - *Approximation*
-    
-    // Couleurs primaires et d'accentuation
-    primary: "#5865F2",         // Blurple
-    primaryForeground: "#FFFFFF",
-    accent: "#5865F2",           // Blurple
-    accentForeground: "#FFFFFF",
-    
-    // Couleurs secondaires et neutres (souvent similaires au thème sombre pour le contraste sur fond noir)
-    secondary: "#B9BBBE",       // *Approximation*
-    muted: "#72767d",           // *Approximation*
-    
-    // Couleurs sémantiques
-    destructive: "#ED4245",      // Rouge Discord
-    destructiveForeground: "#FFFFFF",
-    validated: "#57F287",        // Vert Discord
-    
-    // Bordures et champs de saisie
-    border: "#272727",           // Bordure très foncée, si visible - *Approximation*
-    input: "#0A0A0A",            // Fond des champs de saisie, très foncé - *Approximation*
-    ring: "#5865F2",             // Anneau de focus Blurple
-    
-    // Texte et icônes
-    text: "#FFFFFF",             // Texte principal blanc
-    text2: "#B9BBBE",            // Texte secondaire gris clair - *Approximation*
-    // icon: "#B9BBBE",            // *Approximation*
-    // tabIconDefault: "#72767d",   // *Approximation*
-    // tabIconSelected: "#FFFFFF",  // *Approximation*
-
-    // Autres couleurs de la marque Discord
-    yellow: "#FEE75C",
-    fuchsia: "#EB459E",
-  }
 };

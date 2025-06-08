@@ -7,7 +7,7 @@ export default function ProjectLayout() {
     <Stack
       screenOptions={{ headerShown:false }}>
       <Stack.Screen name="buildloadscreen" />
-      <Stack.Screen name="buildlscreen" />
+      <Stack.Screen name="buildscreen" />
       <Stack.Screen name="chatscreen" />
       <Stack.Screen name="homeprojectscreen" />
     </Stack>
@@ -15,4 +15,3 @@ export default function ProjectLayout() {
   </>
   );
 }
-    
