@@ -30,6 +30,7 @@ export function DynamicLine({ data, count = data.length, borderColor, background
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 10, 
+      
     },
     line: {
       width: 2,
@@ -51,7 +52,7 @@ export function DynamicLine({ data, count = data.length, borderColor, background
       width: 32,
       height: 32,
       borderRadius: 16, // La moitié de la taille pour un cercle parfait
-      marginVertical: 10,
+      marginVertical: 10
     },
     contentContainer: {
       flexDirection: 'column',

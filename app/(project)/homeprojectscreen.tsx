@@ -20,7 +20,8 @@ import { DynamicLine } from '@/components/dynamic/DynamicLine';
 import { DynamicLineVersion } from '@/components/dynamic/DynamiqueLineVersion';
 
 // AJOUT: Importer le type et la fonction de chargement depuis le storage
-import { Project, getLastActiveProject } from '@/utils/projectStorage';
+import { Project, getLastActiveProject, TeamMember } from '@/utils/projectStorage';
+import { color } from '@/constants/color';
 
 // --- Types ---
 type Server = { id: string; avatar: any; name: string; };
@@ -34,6 +35,7 @@ const HomeProjectScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [activeServer, setActiveServer] = useState<string | null>(null);
+  const [activeUser, setActiveUser] = useState<TeamMember | null>(null);
 
   // AJOUT: Logique pour charger les données réelles au démarrage
   useEffect(() => {
@@ -54,14 +56,7 @@ const HomeProjectScreen = () => {
     loadData();
   }, []);
 
-  // --- Données simulées pour la sidebar ---
-  // Note: Idéalement, ceci viendrait de `getAllCachedProjects()`
-  const servers: Server[] = [
-    { id: '1', name: 'Projet A', avatar: require('@/assets/images/partial-react-logo.png') },
-    { id: '2', name: 'Projet B', avatar: require('@/assets/images/partial-react-logo.png') },
-  ];
-
-  const handleSectionToggle = (sectionName: 'team' | 'version') => {
+  const handleSectionToggle = (sectionName: 'team' | 'version' | 'description') => {
       setOpenSection(prevOpenSection => 
           prevOpenSection === sectionName ? null : sectionName
       );
@@ -164,10 +159,13 @@ const HomeProjectScreen = () => {
           <ChatBubbleIcon fillColor={colors.icon} width='24' height='24' />
         </TouchableOpacity>
         <CardComponent style={[styles.separator, { backgroundColor: colors.input }]} />
-        {servers.map(server => (
-          <TouchableOpacity key={server.id} onPress={() => setActiveServer(server.id)} style={styles.serverIconWrapper}>
-            {activeServer === server.id && <CardComponent style={[styles.activeServerIndicator, { backgroundColor: colors.text }]} />}
-            <Image source={server.avatar} style={styles.serverIcon} />
+        {project.team.map(member => (
+          <TouchableOpacity key={member.id} onPress={() => setActiveUser(member)} style={styles.serverIconWrapper}>
+            {activeUser?.id === member.id && <CardComponent style={[styles.activeServerIndicator, { backgroundColor: colors.text }]} />}
+            <Image 
+              source={member.avatarUrl ? { uri: member.avatarUrl } : require('@/assets/images/react-logo.png')} 
+              style={styles.serverIcon} 
+            />
           </TouchableOpacity>
         ))}
         <TouchableOpacity style={[styles.serverIconWrapper, { backgroundColor: colors.input }]}>
@@ -229,16 +227,15 @@ const HomeProjectScreen = () => {
               <HashtagIcon fillColor={ openSection === 'team' ? colors.icon: colors.iconNoSelected} width='16' height='16'/>
               <TextComponent  color= { openSection === 'team' ? colors.icon: colors.iconNoSelected} variante={ openSection === 'team' ? 'headline': 'headline2'}> 🔥| Team</TextComponent>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.optionButton, { borderTopColor: colors.border, borderBottomColor: openSection !== 'version' ? colors.border : 'transparent' }]} onPress={() => handleSectionToggle('version')}>
-              <HashtagIcon fillColor={ colors.iconNoSelected} width='16' height='16'/>
-              <TextComponent color= { colors.iconNoSelected} variante='headline2'> 🗯️ | Description</TextComponent>
+            <TouchableOpacity style={[styles.optionButton, { borderTopColor: colors.border}]} onPress={() => handleSectionToggle('description')}>
+              <HashtagIcon fillColor={ openSection === 'description' ? colors.icon: colors.iconNoSelected} width='16' height='16'/>
+              <TextComponent color= { openSection === 'description' ? colors.icon: colors.iconNoSelected} variante='headline2'> 🗯️ | Description</TextComponent>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.optionButton, { borderTopColor: colors.border, borderBottomColor: openSection !== 'version' ? colors.border : 'transparent' }]} onPress={() => handleSectionToggle('version')}>
+            <TouchableOpacity style={[styles.optionButton, { borderTopColor: colors.border}]} onPress={() => handleSectionToggle('version')}>
               <HashtagIcon fillColor={ openSection === 'version' ? colors.icon: colors.iconNoSelected} width='16' height='16'/>
               <TextComponent color= { openSection === 'version' ? colors.icon: colors.iconNoSelected} variante={ openSection === 'version' ? 'headline': 'headline2'}> 🌪️ | Version</TextComponent>
             </TouchableOpacity>
-           
-            
+            <CardComponent style={{width:'100%', height:0.5, backgroundColor:colors.input, marginTop:8}} />
             {openSection === 'team' && (
               <View style={styles.dynamicLineContainer}>
                 <DynamicLine
@@ -247,7 +244,7 @@ const HomeProjectScreen = () => {
                   data={project.team.map(member => ({
                     title: member.name,
                     email: member.email,
-                    avatar: member.avatarUrl ? { uri: member.avatarUrl } : require('@/assets/images/partial-react-logo.png')
+                    avatar: member.avatarUrl ? { uri: member.avatarUrl } : require('@/assets/images/react-logo.png')
                   }))}
                 />
               </View>
@@ -259,6 +256,11 @@ const HomeProjectScreen = () => {
                       version: v.versionNumber,
                       date: new Date(v.createdAt).toLocaleDateString()
                     }))} />
+              </View>
+            )}
+            {openSection === 'description' && project.description && project.description.length > 0 && (
+              <View style={{flex:1, alignItems:'center', marginTop:10}}>
+               <TextComponent color={colors.icon}>{project.description}</TextComponent>
               </View>
             )}
           </CardComponent>
