@@ -1,19 +1,26 @@
+// xode-app/components/dynamic/DynamicLine.tsx
+
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+// AJOUT: Importer le composant Image
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
+
+// MODIFICATION: Mise à jour des props attendues
 type TimelineProps = {
   borderColor?: string;
   backgroundColor?: string;
-  data: { title: string; date: string }[]; 
+  data: { 
+    title: string; 
+    email: string; // "date" est remplacé par "email"
+    avatar?: any;  // Ajout de la prop optionnelle pour l'avatar
+  }[]; 
   count?: number;
-
 };
 
 export function DynamicLine({ data, count = data.length, borderColor, backgroundColor }: TimelineProps) {
   const colors = useThemeColors();
   const styles = StyleSheet.create({
     container: {
-      display:'flex',
       flexDirection: 'column', 
       alignItems: 'flex-start',
       justifyContent: 'flex-start',
@@ -27,30 +34,40 @@ export function DynamicLine({ data, count = data.length, borderColor, background
     line: {
       width: 2,
       height: 40,
-      backgroundColor: borderColor,
+      backgroundColor: borderColor || colors.border,
     },
+    // Le style du cercle est conservé comme fallback
     circle: {
       width: 12,
       height: 12,
       borderRadius: 6,
       borderWidth: 2,
-      borderColor: borderColor,
-      backgroundColor: backgroundColor,
+      borderColor: borderColor || colors.primary,
+      backgroundColor: backgroundColor || colors.card,
+      marginVertical: 10,
+    },
+    // AJOUT: Style pour l'avatar
+    avatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16, // La moitié de la taille pour un cercle parfait
       marginVertical: 10,
     },
     contentContainer: {
       flexDirection: 'column',
       justifyContent: 'center',
+      paddingBottom: 10, // Un peu d'espace
     },
     title: {
       fontSize: 16,
       fontWeight: 'bold',
-      color: colors.primary, 
+      color: colors.text, 
       marginBottom: 4,
     },
+    // Le style pour la date est réutilisé pour l'email
     date: {
       fontSize: 12,
-      color: colors.primary
+      color: colors.muted
     },
   });
 
@@ -62,13 +79,20 @@ export function DynamicLine({ data, count = data.length, borderColor, background
     elements.push(
       <View key={`timeline-item-${i}`} style={{ flexDirection: 'row' }}>
         <View style={styles.timelineContainer}>
-          <View style={styles.circle} />
-          {i < count && <View style={styles.line} />}
+          {/* MODIFICATION: Affiche l'image si elle existe, sinon le cercle */}
+          {item.avatar ? (
+            <Image source={item.avatar} style={styles.avatar} />
+          ) : (
+            <View style={styles.circle} />
+          )}
+          {/* On affiche la ligne seulement si ce n'est pas le dernier élément */}
+          {i < count - 1 && <View style={styles.line} />}
         </View>
         
         <View style={styles.contentContainer}>
           <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.date}>{item.date}</Text>
+          {/* MODIFICATION: Affiche l'email au lieu de la date */}
+          <Text style={styles.date}>{item.email}</Text>
         </View>
       </View>
     );

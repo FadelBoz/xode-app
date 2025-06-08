@@ -99,8 +99,8 @@ const HomeScreen = () => {
       if (response.ok) {
         const json = await response.json();
         if (json.exists) {
-          router.push({
-            pathname: '/project/buildloadscreen',
+          router.replace({
+            pathname: '/buildloadscreen',
             params: { qrData: getUrl } 
           });
         } else {
@@ -317,7 +317,7 @@ const HomeScreen = () => {
             )}
             <TouchableOpacity 
               style={styles.qrOption}
-              onPress={() => router.push('/scanscreen')}
+              onPress={() => router.replace('/scanscreen')}
             >
               <CardComponent style={styles.qrIconContainer}>
                 <ScannerIcon/>
@@ -345,7 +345,6 @@ const HomeScreen = () => {
           </TextComponent> */}
         </CardComponent>
       </CardComponent>
-
     </SafeAreaView>
   );
 };

@@ -8,7 +8,7 @@ const BuildScreen = () => {
   const router = useRouter();
 
   const navigateToHomeProject = () => {
-    router.push('/project/homeprojectscreen');
+    router.replace('/homeprojectscreen');
   };
 
   return (

@@ -8,6 +8,7 @@ const stylles = StyleSheet.create({
     body3: { fontFamily: 'GgSansRegular',fontSize: 17, lineHeight: 20 }, 
     body2: { fontFamily: 'GgSansRegular',fontSize: 18, lineHeight: 20, fontWeight: "bold" }, 
     headline: { fontFamily: 'GgSansRegular',fontSize: 16, lineHeight: 32, fontWeight: "bold" },  
+    headline2: { fontFamily: 'GgSansRegular',fontSize: 16, lineHeight: 32, fontWeight: "bold" }, 
     caption: { fontSize: 8, lineHeight: 12 },  
     subtitle0: { fontFamily: 'GgSansRegular', fontSize: 32, lineHeight:32, fontWeight:"bold"},
     subtitle1: { fontFamily: 'GgSansRegular',fontSize: 24, lineHeight: 24, fontWeight: "bold" }, 
