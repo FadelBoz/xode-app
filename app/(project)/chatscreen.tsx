@@ -1,6 +1,7 @@
-// app/chatscreen.tsx
+// app/project/chatscreen.tsx
+
 import { Stack, useRouter } from 'expo-router';
-import React, { useState, useCallback } from 'react'; // Ajout de useCallback
+import React, { useState, useEffect } from 'react';
 import {
   FlatList,
   Image,
@@ -8,50 +9,129 @@ import {
   Platform,
   StatusBar,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
+  Modal,
+  Alert,
   View,
-  Modal, // Importer Modal
-  Alert // Importer Alert pour la confirmation de suppression
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
-import * as Clipboard from 'expo-clipboard'; // Importer Clipboard
+import * as Clipboard from 'expo-clipboard';
+import { MaterialIcons } from '@expo/vector-icons';
 
-// Define a type for your message objects
+// Import des composants et hooks du projet
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { TextComponent } from '@/components/text/TextComponent';
+import { CardComponent } from '@/components/ui/CardComponent';
+import { Project, getLastActiveProject } from '@/utils/projectStorage';
+import HashtagIcon from '@/components/ui/HashTagIcon';
+import ArrowLeftIcon from '@/components/ui/ArrowLeftIcon';
+import SendIcon from '@/components/ui/sendIcon';
+import { getToken } from '@/utils/storage';
+import { API_URL } from '@/configs/global';
+
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'other';
   avatar?: string;
   timestamp?: string;
+  username?: string;
+  isConsecutive?: boolean; // Pour savoir si c'est un message consécutif du même utilisateur
 }
 
 const ChatScreen = () => {
   const router = useRouter();
   const headerHeight = useHeaderHeight();
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: "Xode project ", sender: 'other', avatar: 'https://via.placeholder.com/40' },
-    { id: '2', text: "Geek", sender: 'user' },
-    { id: '3', text: "Le projet ça avance ? ", sender: 'other', avatar: 'https://via.placeholder.com/40' },
-    { id: '4', text: "Faisons du dans tâche si possible ", sender: 'other', avatar: 'https://via.placeholder.com/40' },
-    { id: '5', text: "Salut chef", sender: 'other', avatar: 'https://via.placeholder.com/40' },
-  ]);
-  const [inputText, setInputText] = useState('');
+  const colors = useThemeColors();
 
-  // State pour le menu d'actions
+  const [project, setProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Messages avec style Discord - messages consécutifs groupés
+  const [messages, setMessages] = useState<Message[]>([]);
+  
+  const [inputText, setInputText] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isActionMenuVisible, setIsActionMenuVisible] = useState(false);
 
+   // MODIFICATION: useEffect charge maintenant le projet ET les messages
+   useEffect(() => {
+    const loadData = async () => {
+      try {
+        const activeProject = await getLastActiveProject();
+        setProject(activeProject);
+
+        if (activeProject) {
+          // Si on a un projet, on charge ses messages
+          const token = await getToken();
+          if (!token) throw new Error("Token d'authentification manquant.");
+
+          const response = await fetch(`${API_URL}projects/${activeProject.id}/messages`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            }
+          });
+
+          if (!response.ok) throw new Error("Erreur lors de la récupération des messages.");
+          
+          const data = await response.json();
+          const { messages: apiMessages, currentUser } = data;
+
+          // Transformation des messages de l'API au format du frontend
+          const formattedMessages = apiMessages.map((msg: any) => ({
+            id: String(msg.id),
+            text: msg.content,
+            sender: msg.senderId === currentUser.id ? 'user' : 'other',
+            avatar: msg.avatar,
+            timestamp: msg.timestamp,
+            username: msg.sender
+          }));
+
+          // Traitement pour grouper les messages et mise à jour de l'état
+          setMessages(processMessages(formattedMessages.reverse())); // Inverser car l'API les envoie asc, et FlatList est inversée
+        }
+      } catch (e) {
+        console.error("Erreur lors du chargement des données du chat:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+
+  // Fonction pour déterminer si un message est consécutif
+  const processMessages = (msgs: Message[]) => {
+    return msgs.map((msg, index) => {
+      const nextMsg = msgs[index + 1];
+      const isConsecutive = nextMsg && 
+        nextMsg.sender === msg.sender && 
+        nextMsg.username === msg.username &&
+        // Vérifier si les messages sont proches dans le temps (moins de 5 minutes)
+        Math.abs(new Date(msg.timestamp || '').getTime() - new Date(nextMsg.timestamp || '').getTime()) < 5 * 60 * 1000;
+      
+      return { ...msg, isConsecutive };
+    });
+  };
+
   const handleSend = () => {
     if (inputText.trim()) {
-      const newMessage: Message = {
-        id: String(Date.now()),
-        text: inputText.trim(),
+      const newMessage: Message = { 
+        id: String(Date.now()), 
+        text: inputText.trim(), 
         sender: 'user',
+        username: 'Vous',
+        timestamp: new Date().toLocaleString(),
+        isConsecutive: false
       };
-      setMessages(prevMessages => [newMessage, ...prevMessages]);
+      setMessages(prevMessages => {
+        const updatedMessages = [newMessage, ...prevMessages];
+        return processMessages(updatedMessages);
+      });
       setInputText('');
     }
   };
@@ -77,16 +157,14 @@ const ChatScreen = () => {
   const handleDeleteMessage = () => {
     if (selectedMessage) {
       Alert.alert(
-        "Supprimer le message",
-        "Êtes-vous sûr de vouloir supprimer ce message ?",
+        "Supprimer le message", "Êtes-vous sûr de vouloir supprimer ce message ?",
         [
           { text: "Annuler", style: "cancel", onPress: closeActionMenu },
           {
-            text: "Supprimer",
-            style: "destructive",
+            text: "Supprimer", style: "destructive",
             onPress: () => {
-              setMessages(prevMessages =>
-                prevMessages.filter(msg => msg.id !== selectedMessage.id)
+              setMessages(prevMessages => 
+                processMessages(prevMessages.filter(msg => msg.id !== selectedMessage.id))
               );
               closeActionMenu();
             },
@@ -96,54 +174,250 @@ const ChatScreen = () => {
     }
   };
 
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <TouchableOpacity onLongPress={() => openActionMenu(item)} delayLongPress={300}>
-      <View style={[
-        styles.messageRow,
-        item.sender === 'user' ? styles.userMessageRow : styles.otherMessageRow
-      ]}>
-        {item.sender === 'other' && item.avatar && (
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        )}
+  const styles = StyleSheet.create({
+    appBar: {
+      backgroundColor: colors.background2,
+      padding: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.input,
+      flexDirection: 'row'
+    },
+    safeArea: { 
+      flex: 1, 
+      backgroundColor: colors.background2 
+    },
+    loadingContainer: { 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center' 
+    },
+    keyboardAvoidingView: { 
+      flex: 1 
+    },
+    messageList: { 
+      flex: 1, 
+      paddingHorizontal: 0 // Supprimé le padding horizontal
+    },
+    // Style Discord pour les messages
+    messageContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 2,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    messageContainerFirst: {
+      paddingTop: 8,
+      marginTop: 8,
+    },
+    messageContainerConsecutive: {
+      paddingTop: 2,
+    },
+    avatarContainer: {
+      width: 40,
+      marginRight: 12,
+      alignItems: 'center',
+    },
+    avatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+    },
+    avatarPlaceholder: {
+      width: 32,
+      height: 32,
+    },
+    messageContent: {
+      flex: 1,
+      paddingRight: 16,
+    },
+    messageHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    username: {
+      fontWeight: '600',
+      marginRight: 8,
+    },
+    timestamp: {
+      fontSize: 12,
+      opacity: 0.6,
+    },
+    messageText: {
+      fontSize: 16,
+      lineHeight: 20,
+      marginTop: 2,
+    },
+    messageTextConsecutive: {
+      marginTop: 0,
+    },
+    // Hover effect (pour les long press)
+    messageHover: {
+      backgroundColor: colors.input,
+      marginHorizontal: -4,
+      paddingHorizontal: 4,
+      borderRadius: 4,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background2,
+      alignItems: 'center',
+    },
+    input: {
+      flex: 1,
+      minHeight: 40,
+      backgroundColor: colors.input,
+      color: colors.text,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      marginRight: 12,
+      fontSize: 16,
+    },
+    sendButton: {
+      padding: 8,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: 'flex-end',
+    },
+    actionMenu: {
+      backgroundColor: colors.card,
+      marginHorizontal: 16,
+      marginBottom: Platform.OS === 'ios' ? 40 : 16,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    actionMenuItem: {
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    destructiveText: {
+      color: colors.destructive,
+    },
+    cancelAction: {
+      borderBottomWidth: 0,
+      marginTop: 8,
+      backgroundColor: colors.card,
+    },
+    listFooter: {
+      alignItems: 'center',
+      marginVertical: 24,
+      paddingHorizontal: 16,
+    },
+    projectImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 12,
+      marginBottom: 12,
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.loadingContainer, {backgroundColor: colors.background}]}>
+        <ActivityIndicator size="large" color={colors.primary}/>
+      </SafeAreaView>
+    );
+  }
+
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+    const isFirstMessage = !item.isConsecutive;
+    
+    return (
+      <TouchableOpacity 
+        onLongPress={() => openActionMenu(item)} 
+        delayLongPress={300}
+        activeOpacity={0.7}
+      >
         <View style={[
-          styles.messageBubble,
-          item.sender === 'user' ? styles.userMessageBubble : styles.otherMessageBubble
+          styles.messageContainer,
+          isFirstMessage ? styles.messageContainerFirst : styles.messageContainerConsecutive
         ]}>
-          <Text style={item.sender === 'user' ? styles.userMessageText : styles.otherMessageText}>
-            {item.text}
-          </Text>
+          {/* Avatar ou espace vide pour les messages consécutifs */}
+          <View style={styles.avatarContainer}>
+            {isFirstMessage && item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
+          </View>
+          
+          {/* Contenu du message */}
+          <View style={styles.messageContent}>
+            {isFirstMessage && (
+              <View style={styles.messageHeader}>
+                <TextComponent 
+                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.validatedGreen }]}
+                >
+                  {item.username || (item.sender === 'user' ? 'Vous' : 'Utilisateur')}
+                </TextComponent>
+                <TextComponent 
+                  style={[styles.timestamp, { color: colors.muted }]}
+                  variante="caption"
+                >
+                  {formatTime(item.timestamp)}
+                </TextComponent>
+              </View>
+            )}
+            
+            <TextComponent 
+              style={[
+                styles.messageText, 
+                !isFirstMessage && styles.messageTextConsecutive,
+                { color: colors.text }
+              ]}
+              // variante="body"
+            >
+              {item.text}
+            </TextComponent>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
+
+  const backToHomeProjectScreen = async() => {
+    router.replace({
+      pathname: '/homeprojectscreen'
+    });
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <View style={styles.headerTitleContainer}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <Text style={styles.backButtonText}>‹</Text>
-              </TouchableOpacity>
-              <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.headerAvatar} />
-              <View>
-                <Text style={styles.headerName}>Team chat</Text>
-                <Text style={styles.headerStatus}>Active 11m ago</Text>
-              </View>
-            </View>
-          ),
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerShadowVisible: false,
-          headerBackVisible: false,
-        }}
-      />
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoidingView}
+      <CardComponent style={styles.appBar}>
+        <TouchableOpacity onPress={backToHomeProjectScreen}>
+          <ArrowLeftIcon fillColor={colors.iconNoSelected} width={28} height={28}/>
+        </TouchableOpacity>
+        <HashtagIcon fillColor={colors.icon} width='16' height='16'/>
+        <TextComponent variante='headline2' color={colors.icon}> ☁️ | Team </TextComponent>
+        <TextComponent 
+          variante="headline"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={{ flex: 1 }}
+        >
+          {project?.name}
+        </TextComponent>
+      </CardComponent>
+
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        style={styles.keyboardAvoidingView} 
         keyboardVerticalOffset={headerHeight}
       >
         <FlatList
@@ -153,191 +427,77 @@ const ChatScreen = () => {
           style={styles.messageList}
           inverted
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={() => (
+            <View style={styles.listFooter}>
+              <Image 
+                source={project?.projectImage ? { uri: project.projectImage } : require('@/assets/images/react-logo.png')} 
+                style={styles.projectImage} 
+              />
+              <TextComponent 
+                color={colors.muted} 
+                style={{textAlign: 'center', marginTop: 4}}
+                variante="caption"
+              >
+                Ceci est le début de la conversation. Soyez respectueux.
+              </TextComponent>
+            </View>
+          )}
         />
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Message..."
-            placeholderTextColor="#8E8E93"
+
+        <CardComponent style={styles.inputContainer}>
+          <TextInput 
+            style={styles.input} 
+            value={inputText} 
+            onChangeText={setInputText} 
+            placeholder="Envoyer un message..." 
+            placeholderTextColor={colors.muted}
+            multiline
+            maxLength={2000}
           />
           <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>Send</Text>
+            <SendIcon fillColor={colors.icon} width={28} height={28}/>
           </TouchableOpacity>
-        </View>
+        </CardComponent>
       </KeyboardAvoidingView>
 
-      {/* Modal pour le menu d'actions */}
-      <Modal
-        transparent={true}
-        visible={isActionMenuVisible}
-        onRequestClose={closeActionMenu}
+      <Modal 
+        transparent={true} 
+        visible={isActionMenuVisible} 
+        onRequestClose={closeActionMenu} 
         animationType="fade"
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPressOut={closeActionMenu}>
-          <View style={styles.actionMenu}>
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPressOut={closeActionMenu}
+        >
+          <CardComponent style={styles.actionMenu}>
             <TouchableOpacity style={styles.actionMenuItem} onPress={handleCopyMessage}>
-              <Text style={styles.actionMenuText}>Copier le texte</Text>
+              <TextComponent color={colors.primary} style={{textAlign: 'center'}}>
+                Copier le texte
+              </TextComponent>
             </TouchableOpacity>
-            {selectedMessage?.sender === 'user' && ( // Permettre la suppression uniquement pour les messages de l'utilisateur
+            {selectedMessage?.sender === 'user' && (
               <TouchableOpacity style={styles.actionMenuItem} onPress={handleDeleteMessage}>
-                <Text style={[styles.actionMenuText, styles.destructiveText]}>Supprimer le message</Text>
+                <TextComponent style={[styles.destructiveText, {textAlign: 'center'}]}>
+                  Supprimer le message
+                </TextComponent>
               </TouchableOpacity>
             )}
-            {/* Ajoutez d'autres options ici (Modifier, Épingler) */}
-            <TouchableOpacity style={[styles.actionMenuItem, styles.cancelAction]} onPress={closeActionMenu}>
-              <Text style={styles.actionMenuText}>Annuler</Text>
+            <TouchableOpacity 
+              style={[styles.actionMenuItem, styles.cancelAction]} 
+              onPress={closeActionMenu}
+            >
+              <TextComponent color={colors.primary} style={{textAlign: 'center'}}>
+                Annuler
+              </TextComponent>
             </TouchableOpacity>
-          </View>
+          </CardComponent>
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  // ... (tous vos styles existants restent ici)
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: -10,
-  },
-  backButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#000',
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  headerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  headerStatus: {
-    fontSize: 12,
-    color: 'gray',
-  },
-  messageList: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  messageRow: {
-    flexDirection: 'row',
-    marginVertical: 5,
-    alignItems: 'flex-end',
-  },
-  userMessageRow: {
-    justifyContent: 'flex-end',
-  },
-  otherMessageRow: {
-    justifyContent: 'flex-start',
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginRight: 8,
-    marginBottom: 5,
-  },
-  messageBubble: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    maxWidth: '75%',
-  },
-  userMessageBubble: {
-    backgroundColor: '#000000',
-    marginLeft: 'auto',
-  },
-  otherMessageBubble: {
-    backgroundColor: '#E5E5EA',
-  },
-  userMessageText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  otherMessageText: {
-    color: '#000000',
-    fontSize: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 15 : 8,
-    borderTopWidth: 1,
-    borderTopColor: '#D1D1D6',
-    backgroundColor: '#F8F8F8',
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    marginRight: 10,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  sendButton: {
-    padding: 10,
-  },
-  sendButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Styles pour le Modal et le Menu d'Actions
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)', // Fond semi-transparent
-    justifyContent: 'flex-end', // Aligner le menu en bas
-  },
-  actionMenu: {
-    backgroundColor: 'white',
-    marginHorizontal: 10,
-    marginBottom: Platform.OS === 'ios' ? 30 : 10, // Marge en bas, plus pour iOS à cause du geste Home
-    borderRadius: 10,
-    overflow: 'hidden', // Pour que les coins arrondis s'appliquent aux enfants
-  },
-  actionMenuItem: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DDDDDD',
-  },
-  actionMenuText: {
-    fontSize: 17,
-    color: '#007AFF', // Couleur bleue par défaut pour les actions iOS
-    textAlign: 'center',
-  },
-  destructiveText: {
-    color: 'red', // Couleur pour les actions destructives
-  },
-  cancelAction: {
-    borderBottomWidth: 0, // Pas de bordure pour le dernier item (Annuler)
-    marginTop: 8, // Petit espace avant le bouton Annuler (similaire à ActionSheet iOS)
-    backgroundColor: 'white', // Pour que l'espace ne soit pas transparent
-  },
-});
 
 export default ChatScreen;

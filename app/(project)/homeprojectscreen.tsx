@@ -155,7 +155,11 @@ const HomeProjectScreen = () => {
   const renderSidebar = () => (
     <CardComponent style={[styles.sidebar, { backgroundColor: colors.background}]}>
       <ScrollView contentContainerStyle={{ alignItems: 'center', flexGrow: 1 }}>
-        <TouchableOpacity style={[styles.serverIconWrapper, { backgroundColor: colors.input }]}>
+        <TouchableOpacity style={[styles.serverIconWrapper, { backgroundColor: colors.input }]} onPress={()=>{
+          router.replace({
+              pathname: '/chatscreen'
+            });
+          }}>
           <ChatBubbleIcon fillColor={colors.icon} width='24' height='24' />
         </TouchableOpacity>
         <CardComponent style={[styles.separator, { backgroundColor: colors.input }]} />
@@ -180,7 +184,7 @@ const HomeProjectScreen = () => {
   
   const renderMainContent = () => (
     <CardComponent style={styles.mainContent}>
-      <ScrollView style={{flex:1,backgroundColor:colors.background2, marginTop:15, borderTopLeftRadius: 20}}>
+      <ScrollView style={{flex:1,backgroundColor:colors.background2, marginTop:5, borderTopLeftRadius: 20}}>
         <CardComponent style={styles.detailsView}>
           <Image 
             source={project.projectImage ? { uri: project.projectImage } : require('@/assets/images/partial-react-logo.png')} 
@@ -198,8 +202,7 @@ const HomeProjectScreen = () => {
                 >
                     {project.name}
                 </TextComponent>
-                
-                {project.isStarred && <StarIcon fillColor={colors.accent} width='16' height='16'/>}
+                <StarIcon fillColor={colors.accent} width='16' height='16'/>
                 <MaterialIcons name="chevron-right" size={24} color={colors.iconNoSelected} />
             </CardComponent>
               <CardComponent style={styles.detailsSubline}>
@@ -270,7 +273,7 @@ const HomeProjectScreen = () => {
   );
 
   return (
-    <SafeAreaView style = {{backgroundColor: colors.background2, flex: 1}}>
+    <SafeAreaView style = {{backgroundColor: colors.background, flex: 1}}>
       <CardComponent style={styles.container}>
         {renderSidebar()}
         {renderMainContent()}
