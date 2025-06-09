@@ -20,16 +20,22 @@ const BuildLoadScreen = () => {
   useEffect(() => {
     if (!isLoading) {
       const timer = setTimeout(() => {
+        const publicUrl = params.qrData?.replace('xd://', '');
         if (error) {
-          // En cas d'erreur, on pourrait retourner à l'accueil avec un message
-          // Pour l'instant, on retourne simplemement.
           console.error("Redirection annulée à cause d'une erreur:", error);
           router.back();
         } else {
-          // Si tout s'est bien passé, on redirige vers l'écran du projet.
-          // Note : La redirection vers buildscreen n'est peut-être plus nécessaire, 
-          // on pourrait aller directement à homeprojectscreen.
-          router.replace('/homeprojectscreen');
+            if (publicUrl) {
+              router.replace('/buildscreen');
+              // router.replace({
+              //   pathname: '/homeprojectscreen',
+              //   params: { projectUrl: publicUrl } 
+              // });
+            } else {
+              console.error("Redirection annulée à cause d'une erreur:", error);
+              router.back();
+            }
+          
         }
       }, 1200); // On laisse un peu de temps pour afficher le message final.
 

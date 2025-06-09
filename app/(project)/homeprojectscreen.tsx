@@ -22,6 +22,7 @@ import { DynamicLineVersion } from '@/components/dynamic/DynamiqueLineVersion';
 // AJOUT: Importer le type et la fonction de chargement depuis le storage
 import { Project, getLastActiveProject, TeamMember } from '@/utils/projectStorage';
 import { color } from '@/constants/color';
+import ReplyIcon from '@/components/ui/ReplyIcon';
 
 // --- Types ---
 type Server = { id: string; avatar: any; name: string; };
@@ -176,8 +177,12 @@ const HomeProjectScreen = () => {
           <MaterialIcons name="add" size={24} color={colors.validatedGreen} />
         </TouchableOpacity>
       </ScrollView>
-      <TouchableOpacity style={styles.serverIconWrapper}>
-        <MaterialIcons name="settings" size={24} color={colors.iconNoSelected} />
+      <TouchableOpacity 
+          style={styles.serverIconWrapper} 
+          // MODIFICATION: On spécifie une destination au lieu de "back()"
+          onPress={() => router.push('/buildscreen')} 
+      >
+          <ReplyIcon fillColor={colors.iconNoSelected} width={32} height={32}/>
       </TouchableOpacity>
     </CardComponent>
   );

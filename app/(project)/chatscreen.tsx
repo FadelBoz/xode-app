@@ -506,7 +506,7 @@ const ChatScreen = () => {
             {isFirstMessage && (
               <View style={styles.messageHeader}>
                 <TextComponent 
-                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.text }]}
+                  style={[styles.username, { color: item.sender === 'user' ? colors.primary : colors.destructive }]}
                   // variante="body"
                 >
                   {item.username || (item.sender === 'user' ? 'Vous' : 'Utilisateur')}
