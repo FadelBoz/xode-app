@@ -5,4 +5,3 @@ export const API_ENDPOINTS = {
   sendCode:'mobile/send-verification-code',
   verifySendCode:'mobile/verification-code-sent',
 };
-  

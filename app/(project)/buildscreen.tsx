@@ -1,6 +1,7 @@
 // app/buildscreen.tsx
 import React, { useEffect, useRef, useState } from 'react';
-import { StatusBar, StyleSheet, View, Text, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StatusBar, StyleSheet, View, Text, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,6 +17,7 @@ import WebView from 'react-native-webview';
 
 // AJOUT: Importer le nécessaire depuis le storage
 import { Project, getLastActiveProject } from '@/utils/projectStorage';
+import { getToken } from '@/utils/storage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const BUTTON_SIZE = 60;
@@ -28,6 +30,11 @@ const BuildScreen = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isWebViewLoading, setWebViewLoading] = useState(true);
+  // NOUVEAU: État pour stocker le contenu HTML récupéré
+  const [htmlContent, setHtmlContent] = useState<string>('');
+  // NOUVEAU: États pour le menu déroulant
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showDebugText, setShowDebugText] = useState(false);
 
   // AJOUT: useEffect pour charger les données du projet au démarrage
   useEffect(() => {
@@ -35,8 +42,38 @@ const BuildScreen = () => {
       try {
         const activeProject = await getLastActiveProject();
         setProject(activeProject);
+
+        // AJOUT: Logique de test pour récupérer le HTML
+        if (activeProject) {
+          console.log(`Tentative de fetch pour la preview de : ${activeProject.publicUrl}`);
+          const token = await getToken(); // Même si la route est publique, c'est une bonne pratique
+          const previewUri = `${API_URL}preview/${activeProject.publicUrl}`;
+          
+          const response = await fetch(previewUri, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          console.log(`Statut de la réponse du serveur: ${response.status}`);
+
+          if (!response.ok) {
+            throw new Error(`Le serveur a répondu avec une erreur: ${response.status}`);
+          }
+          
+          const htmlContentFetched = await response.text();
+          
+          // NOUVEAU: Stocker le contenu HTML dans l'état
+          setHtmlContent(htmlContentFetched);
+          
+          // Affichez les 200 premiers caractères du HTML dans la console pour vérifier
+          console.log('Début du contenu HTML reçu :', htmlContentFetched.substring(0, 200) + '...');
+        }
+
       } catch (error) {
-        console.error("Erreur lors de la récupération du projet pour la preview:", error);
+        console.error("Erreur lors de la récupération du projet ou de sa preview:", error);
+        // En cas d'erreur, définir un message d'erreur dans le contenu HTML
+        setHtmlContent(`<p>Erreur lors du chargement: ${error}</p>`);
       } finally {
         setIsLoading(false);
       }
@@ -52,8 +89,21 @@ const BuildScreen = () => {
     router.replace('/homeprojectscreen');
   };
 
-  // MODIFICATION: L'URI est maintenant construite à partir de l'état `project`
-  const previewUri = project ? `${API_URL}preview/${project.publicUrl}` : '';
+  // NOUVEAU: Fonction pour basculer entre WebView et affichage du texte
+  const toggleDebugView = () => {
+    setShowDebugText(!showDebugText);
+  };
+
+  // AJOUT: Fonctions pour le menu
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const showCodeView = () => {
+    setShowDebugText(true);
+    setIsMenuOpen(false);
+  };
+  const showWebView = () => {
+    setShowDebugText(false);
+    setIsMenuOpen(false);
+  };
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: Record<string, unknown>) => {
@@ -97,6 +147,7 @@ const BuildScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <ActivityIndicator size="large" color="#000000" />
+        <Text style={{marginTop: 10}}>Chargement du projet...</Text>
       </SafeAreaView>
     );
   }
@@ -113,36 +164,81 @@ const BuildScreen = () => {
     )
   }
 
-
   return (
     <GestureHandlerRootView style={styles.gestureContainer}>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
         <View style={styles.container}>
-            <WebView 
-              source={{ uri: previewUri }}
-              style={styles.webview}
-              onLoadStart={() => setWebViewLoading(true)}
-              onLoadEnd={() => setWebViewLoading(false)}
-            />
-          {isWebViewLoading && (
-            <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#000000"/>
+          {showDebugText ? (
+            <ScrollView style={styles.debugScrollView} contentContainerStyle={styles.debugScrollContent}>
+              <View style={styles.debugHeader}>
+                <TouchableOpacity onPress={showWebView} style={styles.backButton}>
+                  <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
+                  <Text style={styles.backButtonText}>Retour à la WebView</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.debugText}>
+                Contenu récupéré ({htmlContent.length} caractères):
+              </Text>
+              <Text style={styles.htmlContent} selectable={true}>
+                {htmlContent || 'Aucun contenu HTML récupéré'}
+              </Text>
+            </ScrollView>
+          ) : (
+            <>
+              {htmlContent ? (
+                <WebView 
+                  // MODIFICATION: Ajout de la prop `baseUrl`
+                  source={{ 
+                    html: htmlContent,
+                    // On retire la partie "/api/" de l'URL pour obtenir la base
+                    baseUrl: API_URL.replace('/api/', '') 
+                  }}
+                  style={styles.webview}
+                  onLoadStart={() => setWebViewLoading(true)}
+                  onLoadEnd={() => setWebViewLoading(false)}
+                  onError={(error) => console.error('Erreur WebView:', error)}
+                />
+              ) : (
+                <Text style={styles.noContentText}>Aucun contenu à afficher</Text>
+              )}
+              
+              {isWebViewLoading && (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color="#000000"/>
+                  <Text style={styles.loadingText}>Chargement de la WebView...</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
 
-        {/* Le bouton flottant reste au-dessus */}
+        {/* Menu déroulant du bouton flottant */}
+        {isMenuOpen && (
+          <Animated.View style={[styles.menuContainer, { bottom: screenHeight - translateY.value, right: screenWidth - translateX.value - BUTTON_SIZE / 2 }]}>
+            <TouchableOpacity style={styles.menuItem} onPress={navigateToHomeProject}>
+              <MaterialIcons name="dashboard" size={20} color="#FFFFFF" />
+              <Text style={styles.menuItemText}>Dashboard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={showCodeView}>
+              <MaterialIcons name="code" size={20} color="#FFFFFF" />
+              <Text style={styles.menuItemText}>Code</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Le bouton flottant */}
         <PanGestureHandler onGestureEvent={gestureHandler}>
           <Animated.View style={[styles.floatingButton, animatedStyle]}>
-            <TouchableOpacity 
-              style={styles.touchable}
-              onPress={navigateToHomeProject}
-            >
+            <TouchableOpacity style={styles.touchable} onPress={toggleMenu}>
               <Text style={styles.floatingButtonText}>XD</Text>
             </TouchableOpacity>
           </Animated.View>
         </PanGestureHandler>
       </SafeAreaView>
     </GestureHandlerRootView>
+
   );
 };
 
@@ -163,6 +259,91 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  // NOUVEAUX STYLES pour le menu déroulant
+  menuContainer: {
+    position: 'absolute',
+    backgroundColor: '#333',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    minWidth: 120,
+    // Le menu apparaît au-dessus du bouton
+    bottom: BUTTON_SIZE + 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  menuItemText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  // STYLES pour la vue debug améliorée
+  debugHeader: {
+    marginBottom: 15,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    marginLeft: 8,
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  debugScrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  debugScrollContent: {
+    padding: 15,
+  },
+  debugText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  htmlContent: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    backgroundColor: '#f8f8f8',
+    padding: 10,
+    borderRadius: 5,
+    lineHeight: 16,
+  },
+  noContentText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
   },
   floatingButton: {
     position: 'absolute',
