@@ -18,6 +18,8 @@ import WebView from 'react-native-webview';
 // AJOUT: Importer le nécessaire depuis le storage
 import { Project, getLastActiveProject } from '@/utils/projectStorage';
 import { getToken } from '@/utils/storage';
+import { CardComponent } from '@/components/ui/CardComponent';
+import { TextComponent } from '@/components/text/TextComponent';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const BUTTON_SIZE = 60;
@@ -168,8 +170,9 @@ const BuildScreen = () => {
     <GestureHandlerRootView style={styles.gestureContainer}>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
         <View style={styles.container}>
+        {/* <CardComponent style={{backgroundColor:""}}><TextComponent>Hey</TextComponent></CardComponent> */}
+
           {showDebugText ? (
             <ScrollView style={styles.debugScrollView} contentContainerStyle={styles.debugScrollContent}>
               <View style={styles.debugHeader}>
@@ -188,18 +191,59 @@ const BuildScreen = () => {
           ) : (
             <>
               {htmlContent ? (
-                <WebView 
-                  // MODIFICATION: Ajout de la prop `baseUrl`
-                  source={{ 
+            //  <CardComponent style={styles.webview}>
+
+            //  </CardComponent>
+
+                <WebView
+                  // --- Props existantes ---
+                  source={{
                     html: htmlContent,
-                    // On retire la partie "/api/" de l'URL pour obtenir la base
-                    baseUrl: API_URL.replace('/api/', '') 
+                    baseUrl: API_URL.replace('/api/', '')
                   }}
                   style={styles.webview}
                   onLoadStart={() => setWebViewLoading(true)}
                   onLoadEnd={() => setWebViewLoading(false)}
-                  onError={(error) => console.error('Erreur WebView:', error)}
+
+                  // --- AJOUTS POUR RÉSOUDRE LE PROBLÈME D'AFFICHAGE ---
+
+                  // 1. Activer JavaScript (essentiel)
+                  javaScriptEnabled={true}
+
+                  // 2. Activer le stockage DOM (important)
+                  domStorageEnabled={true}
+
+                  // 3. Autoriser toutes les origines pour le débogage
+                  originWhitelist={['*']}
+
+                  // 4. Améliorer le logging des erreurs
+                  onError={(syntheticEvent) => {
+                    const { nativeEvent } = syntheticEvent;
+                    console.warn('Erreur de WebView: ', nativeEvent);
+                    // Vous pouvez aussi stocker l'erreur dans un état pour l'afficher à l'utilisateur
+                    // setHtmlContent(`<h1>Erreur WebView</h1><p>${nativeEvent.description}</p>`);
+                  }}
+                  onHttpError={(syntheticEvent) => {
+                    const { nativeEvent } = syntheticEvent;
+                    console.warn(
+                      `Erreur HTTP dans la WebView: ${nativeEvent.statusCode} pour ${nativeEvent.url}`
+                    );
+                  }}
                 />
+                // <WebView
+                //     // TEST: On utilise une URL HTTPS simple et connue
+                //     source={{ uri: 'https://reactnative.dev/' }}
+                    
+                //     style={styles.webview}
+                //     onLoadStart={() => setWebViewLoading(true)}
+                //     onLoadEnd={() => setWebViewLoading(false)}
+                //     javaScriptEnabled={true}
+                //     domStorageEnabled={true}
+                //     onError={(syntheticEvent) => {
+                //         const { nativeEvent } = syntheticEvent;
+                //         console.warn('Erreur de WebView: ', nativeEvent);
+                //     }}
+                // />
               ) : (
                 <Text style={styles.noContentText}>Aucun contenu à afficher</Text>
               )}
@@ -245,7 +289,7 @@ const BuildScreen = () => {
 const styles = StyleSheet.create({
   webview: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    // backgroundColor: '#333',
   },
   gestureContainer: {
     flex: 1,
@@ -256,9 +300,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // backgroundColor: '#fff',
   },
   // NOUVEAUX STYLES pour le menu déroulant
   menuContainer: {
