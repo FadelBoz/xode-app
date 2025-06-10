@@ -52,6 +52,7 @@ export type ProjectSummary = {
   id: number;
   name: string;
   publicUrl: string;
+  path?: string;
 };
 
 

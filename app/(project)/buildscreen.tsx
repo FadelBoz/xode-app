@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as FileSystem from 'expo-file-system'; // Importe tout sous l'alias "FileSystem"
+import * as Device from 'expo-device';
 import Animated, {
   useAnimatedGestureHandler,
   useAnimatedStyle,
@@ -93,6 +94,32 @@ const BuildScreen = () => {
     loadProject();
   }, []);
 
+  // AJOUT: Nouvelle fonction pour logger l'événement
+  const logDeviceLoad = async () => {
+    if (!project) return; // Ne rien faire si le projet n'est pas chargé
+
+    try {
+        const token = await getToken();
+        const deviceName = Device.deviceName || 'Appareil inconnu';
+        
+        await fetch(`${API_URL}mobile/log-preview`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: project.id,
+                device_name: deviceName,
+            }),
+        });
+        console.log(`Log envoyé pour le projet ${project.id} sur l'appareil ${deviceName}`);
+
+    } catch (error) {
+        console.error("Erreur lors de l'envoi du log:", error);
+    }
+  };
   const translateX = useSharedValue(screenWidth - BUTTON_SIZE - MARGIN);
   const translateY = useSharedValue(screenHeight - BUTTON_SIZE - MARGIN - 13);
   
@@ -199,7 +226,10 @@ const BuildScreen = () => {
                   source={webViewSource}
                   style={styles.webview}
                   onLoadStart={() => setWebViewLoading(true)}
-                  onLoadEnd={() => setWebViewLoading(false)}
+                  onLoadEnd={() => {
+                    setWebViewLoading(false);
+                    logDeviceLoad(); // On appelle la fonction de log ici
+                  }}
                   javaScriptEnabled={true}
                   domStorageEnabled={true}
                   originWhitelist={['*']}
