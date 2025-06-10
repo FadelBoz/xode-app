@@ -28,8 +28,8 @@ import { color } from '@/constants/color';
 import ReplyIcon from '@/components/ui/ReplyIcon';
 import { getToken } from '@/utils/storage';
 import { API_URL } from '@/configs/global';
-import { refreshProjectData } from '../(services)/ProjectService';
-import { downloadProjectLocally } from '../(services)/ProjectDownloader';
+import { refreshProjectData } from '../../services/ProjectService';
+import { downloadProjectLocally } from '../../services/ProjectDownloader';
 
 // --- Types ---
 type Server = { id: string; avatar: any; name: string; };

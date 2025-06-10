@@ -209,6 +209,20 @@ const BuildScreen = () => {
                   onError={(e) => console.warn('Erreur WebView:', e.nativeEvent)}
                   onHttpError={(e) => console.warn(`Erreur HTTP: ${e.nativeEvent.statusCode}`)}
                 />
+                // <WebView
+                //     // TEST: On utilise une URL HTTPS simple et connue
+                //     source={{ uri: 'https://reactnative.dev/' }}
+                    
+                //     style={styles.webview}
+                //     onLoadStart={() => setWebViewLoading(true)}
+                //     onLoadEnd={() => setWebViewLoading(false)}
+                //     javaScriptEnabled={true}
+                //     domStorageEnabled={true}
+                //     onError={(syntheticEvent) => {
+                //         const { nativeEvent } = syntheticEvent;
+                //         console.warn('Erreur de WebView: ', nativeEvent);
+                //     }}
+                // />
               ) : (
                 <Text style={styles.noContentText}>Préparation de l'aperçu...</Text>
               )}

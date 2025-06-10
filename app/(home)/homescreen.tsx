@@ -24,9 +24,9 @@ import { getUser } from '@/utils/storage';
 import TerminalIcon from '@/components/ui/TerminalIcon';
 import { API_URL } from '@/configs/global'; // AJOUT
 // AJOUT: Importer les fonctions et types de projectStorage
-import { getAllCachedProjects, saveProjectData, getProjectData, ProjectSummary, Project } from '@/utils/projectStorage';
+import { getAllCachedProjects, saveProjectData, getProjectData, ProjectSummary, Project, clearAllProjectsCache } from '@/utils/projectStorage';
 import { useFocusEffect } from 'expo-router';
-import { deleteLocalProject, getLocalProjects } from '../(services)/ProjectDownloader';
+import { deleteLocalProject, getLocalProjects } from '../../services/ProjectDownloader';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ScrollView } from 'react-native-gesture-handler';
 // AJOUT: Définir un type pour les projets récents affichés
@@ -52,7 +52,7 @@ const HomeScreen = () => {
   const shake = useRef(new Animated.Value(0)).current;
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   // L'état attend maintenant un tableau de ProjectSummary, ce qui correspond à ce que la fonction retourne
-  
+
   const [localProjects, setLocalProjects] = useState<ProjectSummary[]>([]);
   useEffect(() => {
     const fetchUser = async () => {
@@ -121,6 +121,30 @@ const HomeScreen = () => {
       ]
     );
   };
+
+  // AJOUT: Fonction pour gérer la suppression de l'historique
+  const handleClearHistory = () => {
+    Alert.alert(
+      "Effacer l'historique",
+      "Êtes-vous sûr de vouloir vider la liste des projets récents ? Cette action ne peut pas être annulée.",
+      [
+        {
+          text: "Annuler",
+          style: "cancel"
+        },
+        { 
+          text: "Effacer", 
+          style: "destructive",
+          onPress: async () => {
+            await clearAllProjectsCache();
+            setRecentProjects([]); // Met à jour l'interface en vidant l'état
+            console.log("L'historique des projets récents a été effacé.");
+          } 
+        }
+      ]
+    );
+  };
+
   const shakeAnimation = () => {
     Animated.sequence([
       Animated.timing(shake, { toValue: 5, duration: 50, useNativeDriver: false }),
@@ -185,20 +209,46 @@ const HomeScreen = () => {
     outputRange: [col.input, isValidUrl ? col.border : col.destructive],
   });
   
-  // AJOUT: Fonction pour gérer le clic sur un projet récent
+
   const handleRecentProjectPress = async (projectToLoad: RecentProject) => {
     console.log(`Chargement du projet récent : ${projectToLoad.name}`);
-    // On récupère les données complètes du projet depuis le cache
-    const fullProjectData = await getProjectData(projectToLoad.id);
-    if (fullProjectData) {
-      // On le ré-enregistre pour mettre à jour son `lastAccessed` et le définir comme projet actif
-      await saveProjectData(fullProjectData);
-      // On navigue directement vers l'écran de build
-      router.replace('/buildscreen');
+
+    // On vérifie si ce projet "récent" est aussi présent dans notre liste de projets "locaux"
+    const localVersion = localProjects.find(lp => lp.id === projectToLoad.id);
+
+    if (localVersion && localVersion.path) {
+      // Si une version locale existe (avec un chemin), on la prévisualise directement
+      console.log('Projet récent trouvé en local. Navigation vers la prévisualisation...');
+      router.push({
+          pathname: '/buildscreen',
+          params: { 
+              localPath: localVersion.path,
+              projectId: localVersion.id,
+              projectName: localVersion.name,
+          },
+      });
     } else {
-      Alert.alert("Erreur", "Impossible de charger les données de ce projet.");
+      // Sinon, on navigue vers l'écran de détails du projet
+      console.log('Projet récent non trouvé en local. Navigation vers les détails...');
+      router.push(`/homeprojectscreen?projectId=${projectToLoad.id}`);
     }
   };
+
+  const handleProjectPress = (project: ProjectSummary) => {
+    if (project.path) { // Maintenant, TypeScript sait que 'path' peut exister
+        router.push({
+            pathname: '/buildscreen',
+            params: { 
+                localPath: project.path,
+                projectId: project.id,
+                projectName: project.name,
+            },
+        });
+    } else {
+      router.push(`/homeprojectscreen?projectId=${project.id}`);
+    }
+  };
+
 
   const styles = StyleSheet.create({
     appBar: {
@@ -402,7 +452,7 @@ const HomeScreen = () => {
           <CardComponent style={styles.recentHeader}>
             <TextComponent color={col.iconNoSelected} >Ouverts récemment</TextComponent>
             {recentProjects.length > 0 && (
-              <TouchableOpacity>
+              <TouchableOpacity onPress={handleClearHistory}>
                 <TextComponent variante='body4' color={col.destructive}>EFFACER</TextComponent>
               </TouchableOpacity>
             )}
@@ -429,23 +479,29 @@ const HomeScreen = () => {
           )}
 
         </CardComponent>
-         {/* --- AJOUT: Nouvelle section "Sur cet appareil" --- */}
         <CardComponent style={styles.recentSection}>
           <CardComponent style={styles.recentHeader}>
             <TextComponent color={col.iconNoSelected}>Sur cet appareil</TextComponent>
           </CardComponent>
           {localProjects.length > 0 ? (
             localProjects.map(p => (
-              <View key={p.id} style={styles.recentItem}>
-                <Image source={require('@/assets/images/partial-react-logo.png')} style={styles.appIcon} />
-                <View style={{ flex: 1, marginLeft: 16 }}>
-                  <TextComponent>{p.name}</TextComponent>
-                  <TextComponent variante="body5" color={col.muted}>{p.publicUrl}</TextComponent>
+              // La clé "key" doit être sur l'élément racine du map
+              <TouchableOpacity key={p.id} onPress={() => handleProjectPress(p)}>
+                <View style={styles.recentItem}>
+                  <Image source={require('@/assets/images/partial-react-logo.png')} style={styles.appIcon} />
+                  <View style={{ flex: 1, marginLeft: 16 }}>
+                    <TextComponent>{p.name}</TextComponent>
+                    {/* Afficher le chemin local peut être utile pour le débogage */}
+                    <TextComponent variante="body5" color={col.muted}>{p.publicUrl}</TextComponent>
+                  </View>
+                  <TouchableOpacity onPress={(e) => {
+                    e.stopPropagation(); // Empêche le clic de déclencher le parent
+                    handleDeleteProject(p);
+                  }}>
+                    <MaterialIcons name="delete-outline" size={24} color={col.destructive} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => handleDeleteProject(p)}>
-                  <MaterialIcons name="delete-outline" size={24} color={col.destructive} />
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))
           ) : (
             <TextComponent color={col.muted} style={{textAlign: 'center', paddingVertical: 20}}>
