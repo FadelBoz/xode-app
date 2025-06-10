@@ -1,11 +1,13 @@
 // xode-app/app/project/homeprojectscreen.tsx
 
 // AJOUT: Imports nécessaires pour la gestion d'état et le chargement
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+// AJOUT: Import pour le clipboard
+import * as Clipboard from 'expo-clipboard';
 
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { TextComponent } from '@/components/text/TextComponent';
@@ -18,11 +20,15 @@ import { ExchangeAltIcon } from '@/components/ui/ExchangeAltIcon';
 import HashtagIcon from '@/components/ui/HashTagIcon';
 import { DynamicLine } from '@/components/dynamic/DynamicLine';
 import { DynamicLineVersion } from '@/components/dynamic/DynamiqueLineVersion';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, cancelAnimation } from 'react-native-reanimated';
 
 // AJOUT: Importer le type et la fonction de chargement depuis le storage
 import { Project, getLastActiveProject, TeamMember } from '@/utils/projectStorage';
 import { color } from '@/constants/color';
 import ReplyIcon from '@/components/ui/ReplyIcon';
+import { getToken } from '@/utils/storage';
+import { API_URL } from '@/configs/global';
+import { refreshProjectData } from '../(services)/ProjectService';
 
 // --- Types ---
 type Server = { id: string; avatar: any; name: string; };
@@ -37,6 +43,10 @@ const HomeProjectScreen = () => {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [activeServer, setActiveServer] = useState<string | null>(null);
   const [activeUser, setActiveUser] = useState<TeamMember | null>(null);
+  
+  // AJOUT: États pour la modale d'invitation
+  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
+  const [isInvitingByEmail, setIsInvitingByEmail] = useState(false);
 
   // AJOUT: Logique pour charger les données réelles au démarrage
   useEffect(() => {
@@ -62,6 +72,62 @@ const HomeProjectScreen = () => {
           prevOpenSection === sectionName ? null : sectionName
       );
   };
+
+  // AJOUT: Fonctions pour la gestion des invitations (définies de manière stable)
+  // Dans votre composant HomeProjectScreen
+// AJOUT: État pour gérer l'animation de rafraîchissement
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const rotation = useSharedValue(0);
+
+  // AJOUT: Style animé pour l'icône de rafraîchissement
+  const animatedIconStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotateZ: `${rotation.value}deg` }],
+    };
+  });
+
+  // AJOUT: Fonction pour gérer le clic sur le bouton de rafraîchissement
+  const handleRefresh = useCallback(async () => {
+    if (!project || isRefreshing) return;
+
+    setIsRefreshing(true);
+    rotation.value = withRepeat(withTiming(360, { duration: 1000, easing: Easing.linear }), -1);
+
+    try {
+      const refreshedProject = await refreshProjectData(project.publicUrl);
+      setProject(refreshedProject); // On met à jour l'état avec les nouvelles données
+      Alert.alert('Succès', 'Les données du projet ont été mises à jour.');
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Impossible de rafraîchir les données.');
+    } finally {
+      setIsRefreshing(false);
+      cancelAnimation(rotation); // On arrête l'animation
+      rotation.value = 0; // On réinitialise la position
+    }
+  }, [project, isRefreshing]);
+
+
+ 
+  const handleCopyInviteLink = async () => {
+    if (!project) return;
+    const inviteLink = `https://xode-app.com/invite/${project.publicUrl}`;
+    try {
+      await Clipboard.setStringAsync(inviteLink);
+      Alert.alert(
+        'Lien copié', 
+        'Le lien d\'invitation a été copié dans le presse-papiers.',
+        [{ text: 'OK', onPress: () => setIsInviteModalVisible(false) }]
+      );
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de copier le lien.');
+    }
+  };
+
+
+  const handleCloseModal = () => {
+    setIsInviteModalVisible(false);
+  };
+
   // NOTE: Les styles n'ont pas été modifiés, ils sont juste déplacés pour la lisibilité.
   const styles = StyleSheet.create({
     loadingContainer: {
@@ -133,7 +199,109 @@ const HomeProjectScreen = () => {
       paddingVertical: 15,
       backgroundColor: colors.background2
     },
+    // AJOUT: Styles pour la modale d'invitation
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    keyboardAvoidingView: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+    },
+    modalContent: {
+      width: '100%',
+      maxWidth: 400,
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 5,
+      maxHeight: '80%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    closeButton: {
+      padding: 8,
+    },
+    inviteSection: {
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 10,
+    },
+    emailInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: colors.text,
+      backgroundColor: colors.input,
+      marginBottom: 15,
+    },
+    inviteButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    inviteButtonDisabled: {
+      backgroundColor: colors.muted,
+    },
+    inviteButtonText: {
+      color: colors.primaryForeground,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    orDivider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 20,
+    },
+    orLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    orText: {
+      marginHorizontal: 15,
+      color: colors.muted,
+      fontSize: 14,
+    },
+    copyButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: 'center',
+    },
+    copyButtonText: {
+      color: colors.primary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
   });
+
   // --- Gardes pour le chargement et l'état d'erreur ---
   if (isLoading) {
     return (
@@ -151,6 +319,75 @@ const HomeProjectScreen = () => {
       </SafeAreaView>
     );
   }
+
+  // AJOUT: Composant de la modale d'invitation
+  const InviteModal = () => (
+    <Modal
+      visible={isInviteModalVisible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={handleCloseModal}
+      statusBarTranslucent={true}
+    >
+      <KeyboardAvoidingView 
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableOpacity 
+          style={styles.keyboardAvoidingView}
+          activeOpacity={1}
+          onPress={handleCloseModal}
+        >
+          <TouchableOpacity 
+            style={styles.modalContent}
+            activeOpacity={1}
+            onPress={() => {}} // Empêche la fermeture quand on clique sur le contenu
+          >
+            <View style={styles.modalHeader}>
+              <TextComponent variante="headline" color={colors.text}>
+                Inviter un membre
+              </TextComponent>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={handleCloseModal}
+              >
+                <MaterialIcons name="close" size={24} color={colors.iconNoSelected} />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+                style={styles.emailInput}
+                placeholder="En cours de développement..."
+                placeholderTextColor={colors.muted}
+                editable={false}
+            />
+
+            <View style={styles.orDivider}>
+              <View style={styles.orLine} />
+              <TextComponent variante="body5" color={colors.muted}>
+                OU
+              </TextComponent>
+              <View style={styles.orLine} />
+            </View>
+
+            <View style={styles.inviteSection}>
+              <TextComponent variante="body2" color={colors.text} style={{ marginBottom: 10 }}>
+                Partager le lien d'invitation
+              </TextComponent>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={handleCopyInviteLink}
+              >
+                <TextComponent color={colors.text} variante="body2">
+                  📋 Copier le lien
+                </TextComponent>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
 
   // --- Fonctions de rendu utilisant les données réelles ---
   const renderSidebar = () => (
@@ -173,7 +410,11 @@ const HomeProjectScreen = () => {
             />
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={[styles.serverIconWrapper, { backgroundColor: colors.input }]}>
+        {/* MODIFICATION: Ajouter l'action d'ouverture de la modale */}
+        <TouchableOpacity 
+          style={[styles.serverIconWrapper, { backgroundColor: colors.input }]}
+          onPress={() => setIsInviteModalVisible(true)}
+        >
           <MaterialIcons name="add" size={24} color={colors.validatedGreen} />
         </TouchableOpacity>
       </ScrollView>
@@ -226,8 +467,10 @@ const HomeProjectScreen = () => {
                     textStyle={{color: colors.primaryForeground}}
                 />
               </CardComponent>
-              <TouchableOpacity>
-                  <ExchangeAltIcon fillColor={colors.icon} width='25' height='25' />
+              <TouchableOpacity onPress={handleRefresh} disabled={isRefreshing}>
+                  <Animated.View style={animatedIconStyle}>
+                    <ExchangeAltIcon fillColor={colors.icon} width='25' height='25' />
+                  </Animated.View>
               </TouchableOpacity>
             </CardComponent>
             <CardComponent style={{width:'100%', height:0.5, backgroundColor:colors.input}} />
@@ -283,6 +526,8 @@ const HomeProjectScreen = () => {
         {renderSidebar()}
         {renderMainContent()}
       </CardComponent>
+      {/* AJOUT: Affichage de la modale d'invitation */}
+      <InviteModal />
     </SafeAreaView>
   );
 };
