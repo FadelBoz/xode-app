@@ -29,6 +29,7 @@ import ReplyIcon from '@/components/ui/ReplyIcon';
 import { getToken } from '@/utils/storage';
 import { API_URL } from '@/configs/global';
 import { refreshProjectData } from '../(services)/ProjectService';
+import { downloadProjectLocally } from '../(services)/ProjectDownloader';
 
 // --- Types ---
 type Server = { id: string; avatar: any; name: string; };
@@ -75,9 +76,12 @@ const HomeProjectScreen = () => {
 
   // AJOUT: Fonctions pour la gestion des invitations (définies de manière stable)
   // Dans votre composant HomeProjectScreen
-// AJOUT: État pour gérer l'animation de rafraîchissement
+  // AJOUT: État pour gérer l'animation de rafraîchissement
   const [isRefreshing, setIsRefreshing] = useState(false);
   const rotation = useSharedValue(0);
+  // AJOUT: États pour gérer le téléchargement
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState('');
 
   // AJOUT: Style animé pour l'icône de rafraîchissement
   const animatedIconStyle = useAnimatedStyle(() => {
@@ -106,6 +110,30 @@ const HomeProjectScreen = () => {
     }
   }, [project, isRefreshing]);
 
+  // AJOUT: Fonction pour gérer le clic sur le bouton de téléchargement
+  const handleDownload = useCallback(async () => {
+    if (!project) return;
+
+    setIsDownloading(true);
+    setDownloadProgress('Préparation...');
+
+    try {
+      // Définition du callback de progression
+      const onProgress = ({ current, total, fileName }: { current: number; total: number; fileName: string }) => {
+        setDownloadProgress(`(${current}/${total}) ${fileName}`);
+      };
+
+      await downloadProjectLocally(project, onProgress);
+
+      Alert.alert('Téléchargement terminé', `Le projet "${project.name}" a été sauvegardé en local.`);
+
+    } catch (error: any) {
+      Alert.alert('Erreur de téléchargement', error.message || 'Une erreur inconnue est survenue.');
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress('');
+    }
+  }, [project]);
 
  
   const handleCopyInviteLink = async () => {
@@ -458,11 +486,16 @@ const HomeProjectScreen = () => {
             </CardComponent>
 
             <CardComponent style={styles.actionsContainer}>
-              <CardComponent style={[styles.downloadButton,{backgroundColor:colors.input}]}>
+              <CardComponent style={[
+                styles.downloadButton,
+                {backgroundColor:colors.input, opacity: isDownloading ? 0.5 : 1}
+              ]}>
                 <CloudDownloadIcon height='24' width='24'/>
                 <ButtonComponent
-                    title="Ajouter en local" 
-                    onPress={() => {}}
+                    // MODIFICATION: Logique du bouton mise à jour
+                    title={isDownloading ? downloadProgress : "Ajouter en local"} 
+                    onPress={handleDownload}
+                    disabled={isDownloading}
                     style={{backgroundColor:'transparent'}}
                     textStyle={{color: colors.primaryForeground}}
                 />

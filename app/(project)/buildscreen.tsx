@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as FileSystem from 'expo-file-system'; // Importe tout sous l'alias "FileSystem"
 import Animated, {
   useAnimatedGestureHandler,
   useAnimatedStyle,
@@ -20,6 +21,7 @@ import { Project, getLastActiveProject } from '@/utils/projectStorage';
 import { getToken } from '@/utils/storage';
 import { CardComponent } from '@/components/ui/CardComponent';
 import { TextComponent } from '@/components/text/TextComponent';
+import { WebViewSource } from 'react-native-webview/lib/WebViewTypes';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const BUTTON_SIZE = 60;
@@ -38,6 +40,9 @@ const BuildScreen = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDebugText, setShowDebugText] = useState(false);
 
+  // MODIFICATION : Pour gérer la source de la WebView (locale ou distante)
+  const [webViewSource, setWebViewSource] = useState<WebViewSource | null>(null);
+
   // AJOUT: useEffect pour charger les données du projet au démarrage
   useEffect(() => {
     const loadProject = async () => {
@@ -45,37 +50,42 @@ const BuildScreen = () => {
         const activeProject = await getLastActiveProject();
         setProject(activeProject);
 
-        // AJOUT: Logique de test pour récupérer le HTML
         if (activeProject) {
-          console.log(`Tentative de fetch pour la preview de : ${activeProject.publicUrl}`);
-          const token = await getToken(); // Même si la route est publique, c'est une bonne pratique
-          const previewUri = `${API_URL}preview/${activeProject.publicUrl}`;
+          // --- NOUVELLE LOGIQUE DE CHARGEMENT ---
+          const localProjectRoot = `${FileSystem.documentDirectory}projects/${activeProject.publicUrl}/`;
+          const localEntryPoint = activeProject.entryFilePath ? `${localProjectRoot}${activeProject.entryFilePath}` : null;
           
-          const response = await fetch(previewUri, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-
-          console.log(`Statut de la réponse du serveur: ${response.status}`);
-
-          if (!response.ok) {
-            throw new Error(`Le serveur a répondu avec une erreur: ${response.status}`);
+          let localFileExists = false;
+          if (localEntryPoint) {
+            const fileInfo = await FileSystem.getInfoAsync(localEntryPoint);
+            localFileExists = fileInfo.exists;
           }
-          
-          const htmlContentFetched = await response.text();
-          
-          // NOUVEAU: Stocker le contenu HTML dans l'état
-          setHtmlContent(htmlContentFetched);
-          
-          // Affichez les 200 premiers caractères du HTML dans la console pour vérifier
-          console.log('Début du contenu HTML reçu :', htmlContentFetched.substring(0, 200) + '...');
-        }
 
+          if (localFileExists) {
+            // OPTION 1: Le projet est en local, on charge le fichier depuis l'appareil
+            console.log(`Projet local trouvé. Chargement depuis : ${localEntryPoint}`);
+            setWebViewSource({ uri: localEntryPoint! });
+
+          } else {
+            // OPTION 2: Le projet n'est pas en local, on le charge depuis l'API
+            console.log(`Projet non trouvé en local. Chargement depuis l'API pour : ${activeProject.publicUrl}`);
+            const token = await getToken();
+            const previewUri = `${API_URL}preview/${activeProject.publicUrl}`;
+            
+            const response = await fetch(previewUri, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+            
+            const htmlContent = await response.text();
+            setWebViewSource({
+              html: htmlContent,
+              baseUrl: API_URL.replace('/api/', '')
+            });
+          }
+        } else {
+          throw new Error("Aucun projet actif trouvé.");
+        }
       } catch (error) {
-        console.error("Erreur lors de la récupération du projet ou de sa preview:", error);
-        // En cas d'erreur, définir un message d'erreur dans le contenu HTML
-        setHtmlContent(`<p>Erreur lors du chargement: ${error}</p>`);
+        console.error("Erreur lors de la préparation de la preview:", error);
       } finally {
         setIsLoading(false);
       }
@@ -171,8 +181,6 @@ const BuildScreen = () => {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.container}>
-        {/* <CardComponent style={{backgroundColor:""}}><TextComponent>Hey</TextComponent></CardComponent> */}
-
           {showDebugText ? (
             <ScrollView style={styles.debugScrollView} contentContainerStyle={styles.debugScrollContent}>
               <View style={styles.debugHeader}>
@@ -181,73 +189,29 @@ const BuildScreen = () => {
                   <Text style={styles.backButtonText}>Retour à la WebView</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.debugText}>
-                Contenu récupéré ({htmlContent.length} caractères):
-              </Text>
-              <Text style={styles.htmlContent} selectable={true}>
-                {htmlContent || 'Aucun contenu HTML récupéré'}
-              </Text>
+              <Text style={styles.debugText}>Contenu récupéré ({htmlContent.length} caractères):</Text>
+              <Text style={styles.htmlContent} selectable={true}>{htmlContent || 'Aucun contenu HTML.'}</Text>
             </ScrollView>
           ) : (
             <>
-              {htmlContent ? (
-            //  <CardComponent style={styles.webview}>
-
-            //  </CardComponent>
-
+              {webViewSource ? (
                 <WebView
-                  // --- Props existantes ---
-                  source={{
-                    html: htmlContent,
-                    baseUrl: API_URL.replace('/api/', '')
-                  }}
+                  source={webViewSource}
                   style={styles.webview}
                   onLoadStart={() => setWebViewLoading(true)}
                   onLoadEnd={() => setWebViewLoading(false)}
-
-                  // --- AJOUTS POUR RÉSOUDRE LE PROBLÈME D'AFFICHAGE ---
-
-                  // 1. Activer JavaScript (essentiel)
                   javaScriptEnabled={true}
-
-                  // 2. Activer le stockage DOM (important)
                   domStorageEnabled={true}
-
-                  // 3. Autoriser toutes les origines pour le débogage
                   originWhitelist={['*']}
-
-                  // 4. Améliorer le logging des erreurs
-                  onError={(syntheticEvent) => {
-                    const { nativeEvent } = syntheticEvent;
-                    console.warn('Erreur de WebView: ', nativeEvent);
-                    // Vous pouvez aussi stocker l'erreur dans un état pour l'afficher à l'utilisateur
-                    // setHtmlContent(`<h1>Erreur WebView</h1><p>${nativeEvent.description}</p>`);
-                  }}
-                  onHttpError={(syntheticEvent) => {
-                    const { nativeEvent } = syntheticEvent;
-                    console.warn(
-                      `Erreur HTTP dans la WebView: ${nativeEvent.statusCode} pour ${nativeEvent.url}`
-                    );
-                  }}
+                  allowFileAccess={true}
+                  allowFileAccessFromFileURLs={true}
+                  allowUniversalAccessFromFileURLs={true}
+                  onError={(e) => console.warn('Erreur WebView:', e.nativeEvent)}
+                  onHttpError={(e) => console.warn(`Erreur HTTP: ${e.nativeEvent.statusCode}`)}
                 />
-                // <WebView
-                //     // TEST: On utilise une URL HTTPS simple et connue
-                //     source={{ uri: 'https://reactnative.dev/' }}
-                    
-                //     style={styles.webview}
-                //     onLoadStart={() => setWebViewLoading(true)}
-                //     onLoadEnd={() => setWebViewLoading(false)}
-                //     javaScriptEnabled={true}
-                //     domStorageEnabled={true}
-                //     onError={(syntheticEvent) => {
-                //         const { nativeEvent } = syntheticEvent;
-                //         console.warn('Erreur de WebView: ', nativeEvent);
-                //     }}
-                // />
               ) : (
-                <Text style={styles.noContentText}>Aucun contenu à afficher</Text>
+                <Text style={styles.noContentText}>Préparation de l'aperçu...</Text>
               )}
-              
               {isWebViewLoading && (
                 <View style={styles.loadingOverlay}>
                   <ActivityIndicator size="large" color="#000000"/>
@@ -257,6 +221,7 @@ const BuildScreen = () => {
             </>
           )}
         </View>
+
 
         {/* Menu déroulant du bouton flottant */}
         {isMenuOpen && (
@@ -411,7 +376,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: 'bold',
-  },
+  }
 });
 
 export default BuildScreen;

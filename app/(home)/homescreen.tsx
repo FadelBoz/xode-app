@@ -11,7 +11,8 @@ import {
   Animated,
   Easing,
   Keyboard,
-  ActivityIndicator // AJOUT
+  ActivityIndicator, // AJOUT
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,6 +23,19 @@ import ScannerIcon from '@/components/ui/ScannerIcon';
 import { getUser } from '@/utils/storage';
 import TerminalIcon from '@/components/ui/TerminalIcon';
 import { API_URL } from '@/configs/global'; // AJOUT
+// AJOUT: Importer les fonctions et types de projectStorage
+import { getAllCachedProjects, saveProjectData, getProjectData, ProjectSummary, Project } from '@/utils/projectStorage';
+import { useFocusEffect } from 'expo-router';
+import { deleteLocalProject, getLocalProjects } from '../(services)/ProjectDownloader';
+import { MaterialIcons } from '@expo/vector-icons';
+import { ScrollView } from 'react-native-gesture-handler';
+// AJOUT: Définir un type pour les projets récents affichés
+type RecentProject = {
+  id: number;
+  name: string;
+  publicUrl: string;
+};
+
 
 const HomeScreen = () => {
   const [isUrlInputVisible, setIsUrlInputVisible] = useState(false);
@@ -36,7 +50,10 @@ const HomeScreen = () => {
 
   const animatedBorder = useRef(new Animated.Value(0)).current;
   const shake = useRef(new Animated.Value(0)).current;
-
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
+  // L'état attend maintenant un tableau de ProjectSummary, ce qui correspond à ce que la fonction retourne
+  
+  const [localProjects, setLocalProjects] = useState<ProjectSummary[]>([]);
   useEffect(() => {
     const fetchUser = async () => {
       const user = await getUser();
@@ -44,7 +61,23 @@ const HomeScreen = () => {
     };
     fetchUser();
   }, []);
-  
+   // MODIFICATION: Utilisation de useFocusEffect pour recharger les données chaque fois que l'écran est affiché
+   useFocusEffect(
+    React.useCallback(() => {
+      const loadData = async () => {
+        const user = await getUser();
+        setUserName(user?.name ?? null);
+
+        const cachedProjects = await getAllCachedProjects();
+        setRecentProjects(cachedProjects);
+
+        // AJOUT: Charger aussi les projets locaux
+        const downloadedProjects = await getLocalProjects();
+        setLocalProjects(downloadedProjects);
+      };
+      loadData();
+    }, [])
+  );
   const handleFocus = () => {
     setIsValidUrl(true);
     setError('');
@@ -63,7 +96,31 @@ const HomeScreen = () => {
       useNativeDriver: false,
     }).start();
   };
-
+  // AJOUT: Fonction pour gérer la suppression d'un projet local
+  const handleDeleteProject = (projectToDelete: ProjectSummary) => {
+    Alert.alert(
+      "Confirmer la suppression",
+      `Êtes-vous sûr de vouloir supprimer les fichiers locaux du projet "${projectToDelete.name}" ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await deleteLocalProject(projectToDelete.publicUrl);
+              setLocalProjects(currentProjects => 
+                currentProjects.filter(p => p.id !== projectToDelete.id)
+              );
+              Alert.alert("Succès", "Le projet a été supprimé de votre appareil.");
+            } catch (error: any) {
+              Alert.alert("Erreur", error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
   const shakeAnimation = () => {
     Animated.sequence([
       Animated.timing(shake, { toValue: 5, duration: 50, useNativeDriver: false }),
@@ -128,7 +185,20 @@ const HomeScreen = () => {
     outputRange: [col.input, isValidUrl ? col.border : col.destructive],
   });
   
-    // ... (styles existants)
+  // AJOUT: Fonction pour gérer le clic sur un projet récent
+  const handleRecentProjectPress = async (projectToLoad: RecentProject) => {
+    console.log(`Chargement du projet récent : ${projectToLoad.name}`);
+    // On récupère les données complètes du projet depuis le cache
+    const fullProjectData = await getProjectData(projectToLoad.id);
+    if (fullProjectData) {
+      // On le ré-enregistre pour mettre à jour son `lastAccessed` et le définir comme projet actif
+      await saveProjectData(fullProjectData);
+      // On navigue directement vers l'écran de build
+      router.replace('/buildscreen');
+    } else {
+      Alert.alert("Erreur", "Impossible de charger les données de ce projet.");
+    }
+  };
 
   const styles = StyleSheet.create({
     appBar: {
@@ -257,7 +327,7 @@ const HomeScreen = () => {
       <CardComponent style={styles.appBar}>
         <TextComponent variante='subtitle1' color={col.icon}>XD</TextComponent>
       </CardComponent>
-      <CardComponent style={{backgroundColor: col.background, flex:1}}>
+      <ScrollView style={{backgroundColor: col.background, flex:1}}>
         <CardComponent style={styles.section}>
           <CardComponent style={styles.sectionHeader}>
             <CardComponent style={styles.serverIcon}>
@@ -327,24 +397,63 @@ const HomeScreen = () => {
           </CardComponent>
         </CardComponent>
         
+        {/* MODIFICATION: La section des projets récents est maintenant dynamique */}
         <CardComponent style={styles.recentSection}>
           <CardComponent style={styles.recentHeader}>
-            <TextComponent color={col.iconNoSelected} >Recently opened</TextComponent>
-            <TouchableOpacity>
-              <TextComponent variante='body4' color={col.destructive}>CLEAR</TextComponent>
-            </TouchableOpacity>
+            <TextComponent color={col.iconNoSelected} >Ouverts récemment</TextComponent>
+            {recentProjects.length > 0 && (
+              <TouchableOpacity>
+                <TextComponent variante='body4' color={col.destructive}>EFFACER</TextComponent>
+              </TouchableOpacity>
+            )}
           </CardComponent>
-          <TouchableOpacity style={styles.recentItem}>
-            <CardComponent style={styles.appIconContainer}>
-              <Image source={require('@/assets/images/partial-react-logo.png')} style={styles.appIcon} />
-            </CardComponent>
-            <TextComponent>xode-app</TextComponent>
-          </TouchableOpacity>
-          {/* <TextComponent variante='body5' color={col.destructive} style={styles.errorText}>
-              {error}
-          </TextComponent> */}
+          
+          {recentProjects.length > 0 ? (
+            recentProjects.map(p => (
+              <TouchableOpacity 
+                key={p.id} 
+                style={styles.recentItem}
+                onPress={() => handleRecentProjectPress(p)}
+              >
+                <CardComponent style={styles.appIconContainer}>
+                  {/* Idéalement, l'icône viendrait des données du projet */}
+                  <Image source={require('@/assets/images/partial-react-logo.png')} style={styles.appIcon} />
+                </CardComponent>
+                <TextComponent>{p.name}</TextComponent>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <TextComponent color={col.muted} style={{textAlign: 'center', paddingVertical: 20}}>
+              Aucun projet ouvert récemment.
+            </TextComponent>
+          )}
+
         </CardComponent>
-      </CardComponent>
+         {/* --- AJOUT: Nouvelle section "Sur cet appareil" --- */}
+        <CardComponent style={styles.recentSection}>
+          <CardComponent style={styles.recentHeader}>
+            <TextComponent color={col.iconNoSelected}>Sur cet appareil</TextComponent>
+          </CardComponent>
+          {localProjects.length > 0 ? (
+            localProjects.map(p => (
+              <View key={p.id} style={styles.recentItem}>
+                <Image source={require('@/assets/images/partial-react-logo.png')} style={styles.appIcon} />
+                <View style={{ flex: 1, marginLeft: 16 }}>
+                  <TextComponent>{p.name}</TextComponent>
+                  <TextComponent variante="body5" color={col.muted}>{p.publicUrl}</TextComponent>
+                </View>
+                <TouchableOpacity onPress={() => handleDeleteProject(p)}>
+                  <MaterialIcons name="delete-outline" size={24} color={col.destructive} />
+                </TouchableOpacity>
+              </View>
+            ))
+          ) : (
+            <TextComponent color={col.muted} style={{textAlign: 'center', paddingVertical: 20}}>
+              Aucun projet n'est téléchargé en local.
+            </TextComponent>
+          )}
+        </CardComponent>
+      </ScrollView>
     </SafeAreaView>
   );
 };

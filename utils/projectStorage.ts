@@ -39,12 +39,21 @@ export type Project = {
     description: string | null;
     publicUrl: string;
     isStarred: boolean;
-    projectImage: string | null; // AJOUT
+    projectImage: string | null;
+    entryFilePath?: string; // AJOUT: Le chemin vers le fichier d'entrée, ex: "index.html"
     team: TeamMember[];
-    versions: ProjectVersion[]; // On le garde pour la structure, même si non fourni initialement
-    files: ProjectFile[];       // On le garde pour la structure, même si non fourni initialement
+    versions: ProjectVersion[];
+    files: ProjectFile[];
     lastAccessed: string;
+  };
+
+// AJOUT: Un type pour les listes, plus léger que le type Project complet.
+export type ProjectSummary = {
+  id: number;
+  name: string;
+  publicUrl: string;
 };
+
 
 // Ce type représente ce que l'API envoie VRAIMENT
 type ProjectApiResponse = Omit<Project, 'lastAccessed' | 'versions' | 'files'>;
@@ -135,17 +144,15 @@ export const getProjectData = async (projectId: number): Promise<Project | null>
  * Récupère la liste de tous les projets en cache (détails de base).
  * Utile pour un écran "Projets récents".
  */
-export const getAllCachedProjects = async (): Promise<{ id: number; name: string; publicUrl: string; }[]> => {
-    const cache = await getProjectsCache();
-    // Correct: on trie AVANT de simplifier les objets
-    return Object.values(cache.projects)
-    .sort((a, b) => new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime())
-    .map(p => ({
-        id: p.id,
-        name: p.name,
-        publicUrl: p.publicUrl,
-        // On peut même ajouter lastAccessed au retour si besoin, sinon on le laisse en dehors
-    }));
+export const getAllCachedProjects = async (): Promise<ProjectSummary[]> => {
+  const cache = await getProjectsCache();
+  return Object.values(cache.projects)
+      .sort((a, b) => new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime())
+      .map(p => ({
+          id: p.id,
+          name: p.name,
+          publicUrl: p.publicUrl,
+      }));
 }
 
 
