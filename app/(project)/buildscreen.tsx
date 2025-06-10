@@ -20,6 +20,7 @@ import { WebViewSource } from 'react-native-webview/lib/WebViewTypes';
 import { API_URL } from '@/configs/global';
 import { Project, getLastActiveProject } from '@/utils/projectStorage';
 import { getToken } from '@/utils/storage';
+import TerminalIcon from '@/components/ui/TerminalIcon';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const BUTTON_SIZE = 60;
@@ -117,6 +118,7 @@ const BuildScreen = () => {
   const translateX = useSharedValue(screenWidth - BUTTON_SIZE - MARGIN);
   const translateY = useSharedValue(screenHeight - BUTTON_SIZE - MARGIN - 13);
   const navigateToHomeProject = () => router.replace('/homeprojectscreen');
+  const navigateToHub = () => router.replace('/homescreen');
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const showCodeView = () => { setShowDebugText(true); setIsMenuOpen(false); };
   const showWebView = () => { setShowDebugText(false); setIsMenuOpen(false); };
@@ -204,7 +206,7 @@ const BuildScreen = () => {
 
         {isMenuOpen && (
           <Animated.View style={[styles.menuContainer, { bottom: screenHeight - translateY.value, right: screenWidth - translateX.value - BUTTON_SIZE / 2 }]}>
-            <TouchableOpacity style={styles.menuItem} onPress={navigateToHomeProject}><MaterialIcons name="dashboard" size={20} color="#FFFFFF" /><Text style={styles.menuItemText}>Menu</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={navigateToHub}><TerminalIcon fillColor="#fff" width='20' height='20'/><Text style={styles.menuItemText}>Hub</Text></TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={navigateToHomeProject}><MaterialIcons name="dashboard" size={20} color="#FFFFFF" /><Text style={styles.menuItemText}>Dashboard</Text></TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={showCodeView}><MaterialIcons name="code" size={20} color="#FFFFFF" /><Text style={styles.menuItemText}>Code</Text></TouchableOpacity>
           </Animated.View>
