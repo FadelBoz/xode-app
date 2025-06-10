@@ -1,28 +1,25 @@
-// app/buildscreen.tsx
-import React, { useEffect, useRef, useState } from 'react';
+// app/project/buildscreen.tsx
+
+import React, { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View, Text, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as FileSystem from 'expo-file-system'; // Importe tout sous l'alias "FileSystem"
-import * as Device from 'expo-device';
+import { useRouter } from 'expo-router';
+import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
-  runOnJS,
   withSpring,
 } from 'react-native-reanimated';
-import { API_URL } from '@/configs/global';
 import WebView from 'react-native-webview';
+import * as FileSystem from 'expo-file-system';
+import * as Device from 'expo-device';
+import { WebViewSource } from 'react-native-webview/lib/WebViewTypes';
 
-// AJOUT: Importer le nécessaire depuis le storage
+import { API_URL } from '@/configs/global';
 import { Project, getLastActiveProject } from '@/utils/projectStorage';
 import { getToken } from '@/utils/storage';
-import { CardComponent } from '@/components/ui/CardComponent';
-import { TextComponent } from '@/components/text/TextComponent';
-import { WebViewSource } from 'react-native-webview/lib/WebViewTypes';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const BUTTON_SIZE = 60;
@@ -31,77 +28,74 @@ const MARGIN = 30;
 const BuildScreen = () => {
   const router = useRouter();
   
-  // AJOUT: États pour gérer le chargement du projet et de la WebView
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isWebViewLoading, setWebViewLoading] = useState(true);
-  // NOUVEAU: État pour stocker le contenu HTML récupéré
   const [htmlContent, setHtmlContent] = useState<string>('');
-  // NOUVEAU: États pour le menu déroulant
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDebugText, setShowDebugText] = useState(false);
-
-  // MODIFICATION : Pour gérer la source de la WebView (locale ou distante)
   const [webViewSource, setWebViewSource] = useState<WebViewSource | null>(null);
 
-  // AJOUT: useEffect pour charger les données du projet au démarrage
   useEffect(() => {
     const loadProject = async () => {
       try {
         const activeProject = await getLastActiveProject();
         setProject(activeProject);
 
-        if (activeProject) {
-          // --- NOUVELLE LOGIQUE DE CHARGEMENT ---
-          const localProjectRoot = `${FileSystem.documentDirectory}projects/${activeProject.publicUrl}/`;
-          const localEntryPoint = activeProject.entryFilePath ? `${localProjectRoot}${activeProject.entryFilePath}` : null;
-          
-          let localFileExists = false;
-          if (localEntryPoint) {
-            const fileInfo = await FileSystem.getInfoAsync(localEntryPoint);
-            localFileExists = fileInfo.exists;
-          }
-
-          if (localFileExists) {
-            // OPTION 1: Le projet est en local, on charge le fichier depuis l'appareil
-            console.log(`Projet local trouvé. Chargement depuis : ${localEntryPoint}`);
-            setWebViewSource({ uri: localEntryPoint! });
-
-          } else {
-            // OPTION 2: Le projet n'est pas en local, on le charge depuis l'API
-            console.log(`Projet non trouvé en local. Chargement depuis l'API pour : ${activeProject.publicUrl}`);
-            const token = await getToken();
-            const previewUri = `${API_URL}preview/${activeProject.publicUrl}`;
-            
-            const response = await fetch(previewUri, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
-            
-            const htmlContent = await response.text();
-            setWebViewSource({
-              html: htmlContent,
-              baseUrl: API_URL.replace('/api/', '')
-            });
-          }
-        } else {
+        if (!activeProject) {
           throw new Error("Aucun projet actif trouvé.");
         }
-      } catch (error) {
+
+        // On vérifie si le projet a un point d'entrée défini
+        if (!activeProject.entryFilePath) {
+          throw new Error("Le projet n'a pas de fichier d'entrée (entryFilePath) défini.");
+        }
+
+        // Construction du chemin local SANS ambigüité
+        const localProjectRoot = `${FileSystem.documentDirectory}projects/${activeProject.publicUrl}`;
+        const localEntryPoint = `${localProjectRoot}/${activeProject.entryFilePath}`;
+        
+        const fileInfo = await FileSystem.getInfoAsync(localEntryPoint);
+
+        if (fileInfo.exists) {
+          // --- OPTION 1: Le projet est en local ---
+          console.log(`Projet local trouvé. Chargement depuis : ${localEntryPoint}`);
+          const localHtml = await FileSystem.readAsStringAsync(localEntryPoint);
+          setHtmlContent(localHtml); // Pour le mode debug
+          setWebViewSource({ uri: localEntryPoint });
+
+        } else {
+          // --- OPTION 2: Le projet n'est pas en local ---
+          console.log(`Projet non trouvé en local. Chargement depuis l'API pour : ${activeProject.publicUrl}`);
+          const token = await getToken();
+          const previewUri = `${API_URL}preview/${activeProject.publicUrl}`;
+          
+          const response = await fetch(previewUri, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+          
+          const fetchedHtml = await response.text();
+          setHtmlContent(fetchedHtml); // Pour le mode debug
+          setWebViewSource({
+            html: fetchedHtml,
+            baseUrl: API_URL.replace('/api/', '')
+          });
+        }
+      } catch (error: any) {
         console.error("Erreur lors de la préparation de la preview:", error);
+        setHtmlContent(`<h1>Erreur de chargement</h1><p>${error.message}</p>`);
       } finally {
         setIsLoading(false);
       }
     };
+
     loadProject();
   }, []);
 
-  // AJOUT: Nouvelle fonction pour logger l'événement
   const logDeviceLoad = async () => {
-    if (!project) return; // Ne rien faire si le projet n'est pas chargé
-
+    if (!project) return;
     try {
         const token = await getToken();
         const deviceName = Device.deviceName || 'Appareil inconnu';
-        
         await fetch(`${API_URL}mobile/log-preview`, {
             method: 'POST',
             headers: {
@@ -115,44 +109,20 @@ const BuildScreen = () => {
             }),
         });
         console.log(`Log envoyé pour le projet ${project.id} sur l'appareil ${deviceName}`);
-
     } catch (error) {
         console.error("Erreur lors de l'envoi du log:", error);
     }
   };
+
   const translateX = useSharedValue(screenWidth - BUTTON_SIZE - MARGIN);
   const translateY = useSharedValue(screenHeight - BUTTON_SIZE - MARGIN - 13);
-  
-  
-  const navigateToHomeProject = () => {
-    router.replace('/homeprojectscreen');
-  };
-
-  // NOUVEAU: Fonction pour basculer entre WebView et affichage du texte
-  const toggleDebugView = () => {
-    setShowDebugText(!showDebugText);
-  };
-
-  // AJOUT: Fonctions pour le menu
+  const navigateToHomeProject = () => router.replace('/homeprojectscreen');
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-  const showCodeView = () => {
-    setShowDebugText(true);
-    setIsMenuOpen(false);
-  };
-  const showWebView = () => {
-    setShowDebugText(false);
-    setIsMenuOpen(false);
-  };
-
+  const showCodeView = () => { setShowDebugText(true); setIsMenuOpen(false); };
+  const showWebView = () => { setShowDebugText(false); setIsMenuOpen(false); };
   const gestureHandler = useAnimatedGestureHandler({
-    onStart: (_, context: Record<string, unknown>) => {
-      context.startX = translateX.value;
-      context.startY = translateY.value;
-    },
-    onActive: (event, context: Record<string, unknown>) => {
-      translateX.value = (context.startX as number) + event.translationX;
-      translateY.value = (context.startY as number) + event.translationY;
-    },
+    onStart: (_, ctx: any) => { ctx.startX = translateX.value; ctx.startY = translateY.value; },
+    onActive: (e, ctx: any) => { translateX.value = ctx.startX + e.translationX; translateY.value = ctx.startY + e.translationY; },
     onEnd: () => {
       // Limiter les positions pour que le bouton reste dans l'écran
       const maxX = screenWidth - BUTTON_SIZE - 10;
@@ -171,27 +141,16 @@ const BuildScreen = () => {
       }
     },
   });
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }, { translateY: translateY.value }] }));
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-      ],
-    };
-  });
-
-  // AJOUT: Affichage pendant le chargement initial des données du projet
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#000000" />
-        <Text style={{marginTop: 10}}>Chargement du projet...</Text>
+        <ActivityIndicator size="large" color="#000000" /><Text style={{marginTop: 10}}>Chargement du projet...</Text>
       </SafeAreaView>
     );
   }
 
-  // AJOUT: Affichage si aucun projet n'est trouvé
   if (!project) {
     return (
       <SafeAreaView style={styles.container}>
@@ -200,7 +159,7 @@ const BuildScreen = () => {
             <Text>Retour à l'accueil</Text>
         </TouchableOpacity>
       </SafeAreaView>
-    )
+    );
   }
 
   return (
@@ -211,13 +170,10 @@ const BuildScreen = () => {
           {showDebugText ? (
             <ScrollView style={styles.debugScrollView} contentContainerStyle={styles.debugScrollContent}>
               <View style={styles.debugHeader}>
-                <TouchableOpacity onPress={showWebView} style={styles.backButton}>
-                  <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
-                  <Text style={styles.backButtonText}>Retour à la WebView</Text>
-                </TouchableOpacity>
+                <TouchableOpacity onPress={showWebView} style={styles.backButton}><MaterialIcons name="arrow-back" size={24} color="#007AFF" /><Text style={styles.backButtonText}>Retour au Preview</Text></TouchableOpacity>
               </View>
               <Text style={styles.debugText}>Contenu récupéré ({htmlContent.length} caractères):</Text>
-              <Text style={styles.htmlContent} selectable={true}>{htmlContent || 'Aucun contenu HTML.'}</Text>
+              <Text style={styles.htmlContent} selectable={true}>{htmlContent || 'Aucun contenu reçu.'}</Text>
             </ScrollView>
           ) : (
             <>
@@ -226,10 +182,7 @@ const BuildScreen = () => {
                   source={webViewSource}
                   style={styles.webview}
                   onLoadStart={() => setWebViewLoading(true)}
-                  onLoadEnd={() => {
-                    setWebViewLoading(false);
-                    logDeviceLoad(); // On appelle la fonction de log ici
-                  }}
+                  onLoadEnd={() => { setWebViewLoading(false); logDeviceLoad(); }}
                   javaScriptEnabled={true}
                   domStorageEnabled={true}
                   originWhitelist={['*']}
@@ -239,59 +192,31 @@ const BuildScreen = () => {
                   onError={(e) => console.warn('Erreur WebView:', e.nativeEvent)}
                   onHttpError={(e) => console.warn(`Erreur HTTP: ${e.nativeEvent.statusCode}`)}
                 />
-                // <WebView
-                //     // TEST: On utilise une URL HTTPS simple et connue
-                //     source={{ uri: 'https://reactnative.dev/' }}
-                    
-                //     style={styles.webview}
-                //     onLoadStart={() => setWebViewLoading(true)}
-                //     onLoadEnd={() => setWebViewLoading(false)}
-                //     javaScriptEnabled={true}
-                //     domStorageEnabled={true}
-                //     onError={(syntheticEvent) => {
-                //         const { nativeEvent } = syntheticEvent;
-                //         console.warn('Erreur de WebView: ', nativeEvent);
-                //     }}
-                // />
               ) : (
-                <Text style={styles.noContentText}>Préparation de l'aperçu...</Text>
+                <View style={styles.loadingOverlay}><ActivityIndicator size="large" /><Text style={{marginTop: 10}}>Préparation de l'aperçu...</Text></View>
               )}
               {isWebViewLoading && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="large" color="#000000"/>
-                  <Text style={styles.loadingText}>Chargement de la WebView...</Text>
-                </View>
+                <View style={styles.loadingOverlay}><ActivityIndicator size="large" /><Text style={styles.loadingText}>Chargement de la WebView...</Text></View>
               )}
             </>
           )}
         </View>
 
-
-        {/* Menu déroulant du bouton flottant */}
         {isMenuOpen && (
           <Animated.View style={[styles.menuContainer, { bottom: screenHeight - translateY.value, right: screenWidth - translateX.value - BUTTON_SIZE / 2 }]}>
-            <TouchableOpacity style={styles.menuItem} onPress={navigateToHomeProject}>
-              <MaterialIcons name="dashboard" size={20} color="#FFFFFF" />
-              <Text style={styles.menuItemText}>Dashboard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem} onPress={showCodeView}>
-              <MaterialIcons name="code" size={20} color="#FFFFFF" />
-              <Text style={styles.menuItemText}>Code</Text>
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={navigateToHomeProject}><MaterialIcons name="dashboard" size={20} color="#FFFFFF" /><Text style={styles.menuItemText}>Menu</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={navigateToHomeProject}><MaterialIcons name="dashboard" size={20} color="#FFFFFF" /><Text style={styles.menuItemText}>Dashboard</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={showCodeView}><MaterialIcons name="code" size={20} color="#FFFFFF" /><Text style={styles.menuItemText}>Code</Text></TouchableOpacity>
           </Animated.View>
         )}
 
-        {/* Le bouton flottant */}
         <PanGestureHandler onGestureEvent={gestureHandler}>
           <Animated.View style={[styles.floatingButton, animatedStyle]}>
-            <TouchableOpacity style={styles.touchable} onPress={toggleMenu}>
-              <Text style={styles.floatingButtonText}>XD</Text>
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.touchable} onPress={toggleMenu}><Text style={styles.floatingButtonText}>XD</Text></TouchableOpacity>
           </Animated.View>
         </PanGestureHandler>
       </SafeAreaView>
     </GestureHandlerRootView>
-
   );
 };
 
