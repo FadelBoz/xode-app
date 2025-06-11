@@ -65,7 +65,7 @@ const ScanScreen = () => {
   };
 
   const closeScanner = () => {
-    router.back();
+    router.push(`/homescreen`);
   };
 
   return (
